@@ -1,8 +1,9 @@
 import type { TaskDto } from '@qetodo/contracts';
-import { Check, FileImage, RotateCcw, Trash2, X } from 'lucide-react';
+import { Check, RotateCcw, Trash2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { formatTaskDate } from '../taskViewModel.js';
+import { AttachmentGallery } from '../../attachments/AttachmentGallery.js';
 import { handleDialogKey } from './TaskEditorSheet.js';
 
 interface TaskDetailSheetProps {
@@ -75,11 +76,7 @@ export function TaskDetailSheet(props: TaskDetailSheetProps) {
           {props.task.attachments.length ? (
             <section className="detail-section">
               <h3>图片附件</h3>
-              <div className="attachment-list">
-                {props.task.attachments.map((attachment) => (
-                  <div key={attachment.id}><FileImage size={19} /><span>{attachment.fileName}</span></div>
-                ))}
-              </div>
+              <AttachmentGallery attachments={props.task.attachments} />
             </section>
           ) : null}
 

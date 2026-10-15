@@ -1,8 +1,10 @@
 import type { TaskPriority, TaskStatus } from '@qetodo/contracts';
-import { ImagePlus, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 
 import type { TaskDraft } from '../../../api/tasks.js';
+import { AttachmentPicker } from '../../attachments/AttachmentPicker.js';
+import type { CompressedImage } from '../../attachments/imageCompression.js';
 
 interface TaskEditorSheetProps {
   open: boolean;
@@ -23,9 +25,8 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
   const [followUpAt, setFollowUpAt] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [images, setImages] = useState<File[]>([]);
+  const [images, setImages] = useState<CompressedImage[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [imageError, setImageError] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -42,13 +43,6 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
       setTags((current) => [...current, next]);
     }
     setTagInput('');
-  };
-
-  const selectImages = (files: FileList | null) => {
-    if (!files) return;
-    const combined = [...images, ...Array.from(files)];
-    setImages(combined.slice(0, 6));
-    setImageError(combined.length > 6 ? '最多添加 6 张图片' : '');
   };
 
   const submit = async (event: FormEvent) => {
@@ -74,7 +68,7 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
       subtasks: [],
       recurrence: { kind: 'none' },
       tags,
-      imageFiles: images,
+      imageFiles: images.map(({ file }) => file),
     });
   };
 
@@ -173,12 +167,7 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
           </div>
           <div className="editor-field">
             <span>图片</span>
-            <label className="image-picker" htmlFor="image-input"><ImagePlus size={20} />添加图片</label>
-            <input className="visually-hidden" id="image-input" type="file" accept="image/*" multiple onChange={(event) => selectImages(event.target.files)} />
-            <div className="image-placeholder-list">
-              {images.map((image, index) => <span data-testid="image-placeholder" key={`${image.name}-${index}`}>{image.name}</span>)}
-            </div>
-            {imageError ? <p className="inline-error" role="alert">{imageError}</p> : null}
+            <AttachmentPicker value={images} onChange={setImages} />
           </div>
           <button className="primary-button sheet-save" type="submit">保存任务</button>
         </form>

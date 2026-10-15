@@ -11,4 +11,13 @@ export const attachmentDtoSchema = z.object({
   createdAt: z.iso.datetime({ offset: true }),
 });
 
+export const attachmentUploadMetadataSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  mediaType: z.enum(['image/webp', 'image/jpeg', 'image/png']),
+  byteSize: z.number().int().positive().max(1_000_000),
+  width: z.number().int().positive().max(1920),
+  height: z.number().int().positive().max(1920),
+});
+
 export type AttachmentDto = z.infer<typeof attachmentDtoSchema>;
+export type AttachmentUploadMetadata = z.infer<typeof attachmentUploadMetadataSchema>;

@@ -10,6 +10,7 @@ migrateDatabase(database);
 const app = buildApp({
   database,
   appOrigin: config.APP_ORIGIN,
+  uploadDir: config.UPLOAD_DIR,
   sessionTtlMs: config.SESSION_TTL_DAYS * 24 * 60 * 60 * 1_000,
 });
 

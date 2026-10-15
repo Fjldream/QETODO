@@ -35,7 +35,8 @@ class BrowserHttpClient implements HttpClient {
     const { body, ...fetchOptions } = options;
     const method = options.method?.toUpperCase() ?? 'GET';
     const headers = new Headers(options.headers);
-    if (body !== undefined) headers.set('Content-Type', 'application/json');
+    const formData = typeof FormData !== 'undefined' && body instanceof FormData;
+    if (body !== undefined && !formData) headers.set('Content-Type', 'application/json');
     if (!['GET', 'HEAD'].includes(method) && this.csrfToken) {
       headers.set('X-CSRF-Token', this.csrfToken);
     }
@@ -45,7 +46,7 @@ class BrowserHttpClient implements HttpClient {
       method,
       headers,
       credentials: 'include',
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: formData ? body : JSON.stringify(body) }),
     });
 
     const payload = response.status === 204 ? undefined : await response.json().catch(() => undefined);

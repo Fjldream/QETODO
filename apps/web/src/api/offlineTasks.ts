@@ -23,6 +23,7 @@ interface QueuedCreate {
   input: CreateTaskInput;
   tags: string[];
   tagsOperationId: string;
+  attachments: Array<{ operationId: string; file: File }>;
 }
 
 export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = localDb) {
@@ -36,6 +37,22 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
     tasks,
     send,
     onStatus: publishSyncStatus,
+    onAcknowledged: async (operation, acknowledgement) => {
+      if (operation.kind !== 'create') return;
+      const queued = operation.data as QueuedCreate;
+      for (const attachment of queued.attachments) {
+        await outbox.enqueue({
+          operationId: attachment.operationId,
+          taskId: acknowledgement.data.id,
+          kind: 'attachment',
+          baseVersion: acknowledgement.data.version,
+          data: attachment.file,
+          createdAt: new Date().toISOString(),
+          retryCount: 0,
+          lastError: null,
+        });
+      }
+    },
     onConflict: (conflict) => {
       publishConflict(conflict, async (choice) => {
         await outbox.ack(conflict.operationId);
@@ -80,6 +97,7 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
         input,
         tags: draft.tags,
         tagsOperationId: crypto.randomUUID(),
+        attachments: draft.imageFiles.map((file) => ({ operationId: crypto.randomUUID(), file })),
       } satisfies QueuedCreate));
     },
     async update(id: string, version: number, patch: UpdateTaskInput): Promise<TaskDto> {
@@ -134,6 +152,16 @@ async function sendOperation(client: HttpClient, operation: OutboxOperation): Pr
       }));
     }
     return acknowledgement;
+  }
+  if (operation.kind === 'attachment') {
+    const file = operation.data as File;
+    const form = new FormData();
+    form.append('file', file, file.name);
+    await client.request(`/api/tasks/${operation.taskId}/attachments`, { method: 'POST', body: form });
+    return {
+      operationId: operation.operationId,
+      data: taskDtoSchema.parse(await client.request(`/api/tasks/${operation.taskId}`)),
+    };
   }
   const [path, method] = routes[operation.kind];
   return taskAckSchema.parse(await client.request(path, {

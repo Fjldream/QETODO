@@ -2,6 +2,17 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('../attachments/imageCompression.js', () => ({
+  compressImage: vi.fn(async (file: File) => ({
+    file,
+    mediaType: 'image/jpeg',
+    originalBytes: file.size,
+    compressedBytes: file.size,
+    width: 100,
+    height: 100,
+  })),
+}));
+
 import { TaskEditorSheet } from './components/TaskEditorSheet.js';
 
 describe('TaskEditorSheet', () => {
@@ -35,7 +46,7 @@ describe('TaskEditorSheet', () => {
 
     expect(screen.getByText('钛合金')).toBeInTheDocument();
     expect(screen.getAllByTestId('image-placeholder')).toHaveLength(6);
-    expect(screen.getByRole('alert')).toHaveTextContent('最多添加 6 张图片');
+    expect(screen.getByRole('alert')).toHaveTextContent('每个任务最多保留 6 张图片');
   });
 
   it('traps focus and closes with Escape', async () => {

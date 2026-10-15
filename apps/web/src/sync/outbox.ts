@@ -1,6 +1,6 @@
 import type { LocalDatabase } from '../db/localDb.js';
 
-export type OutboxOperationKind = 'create' | 'update' | 'transition' | 'delete' | 'restore';
+export type OutboxOperationKind = 'create' | 'update' | 'transition' | 'delete' | 'restore' | 'attachment';
 
 export interface OutboxOperation {
   sequence?: number | undefined;

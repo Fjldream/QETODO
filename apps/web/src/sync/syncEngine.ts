@@ -12,6 +12,7 @@ interface SyncEngineOptions {
   send(operation: OutboxOperation): Promise<MutationAck<TaskDto>>;
   onConflict?(conflict: ConflictResponse): void;
   onStatus?(status: SyncState): void;
+  onAcknowledged?(operation: OutboxOperation, acknowledgement: MutationAck<TaskDto>): Promise<void> | void;
 }
 
 export class SyncEngine {
@@ -71,6 +72,7 @@ export class SyncEngine {
           throw new Error('Server acknowledged an unexpected operation');
         }
         await this.options.tasks.replaceFromAcknowledgement(operation.taskId, acknowledgement.data);
+        await this.options.onAcknowledged?.(operation, acknowledgement);
         await this.options.outbox.ack(operation.operationId);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
