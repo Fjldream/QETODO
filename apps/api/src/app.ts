@@ -6,6 +6,7 @@ import { registerAuthRoutes } from './features/auth/auth.routes.js';
 import { AuthRepository } from './features/auth/auth.repository.js';
 import { SessionService } from './features/auth/auth.service.js';
 import { ScryptPasswordHasher } from './features/auth/password.js';
+import { registerTaskRoutes } from './features/tasks/task.routes.js';
 import { type Clock, systemClock } from './lib/clock.js';
 import { HttpError } from './lib/httpErrors.js';
 
@@ -42,10 +43,21 @@ export function buildApp(dependencies: AppDependencies): FastifyInstance {
       sessions,
     }),
   );
+  void app.register(async (scope) =>
+    registerTaskRoutes(scope, {
+      appOrigin: dependencies.appOrigin,
+      clock,
+      database: dependencies.database,
+      sessions,
+    }),
+  );
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof HttpError) {
-      return reply.status(error.statusCode).send({ error: error.code });
+      return reply.status(error.statusCode).send({
+        error: error.code,
+        ...(error.details === undefined ? {} : { issues: error.details }),
+      });
     }
 
     app.log.error(error);

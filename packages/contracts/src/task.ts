@@ -108,13 +108,25 @@ export const createTaskInputSchema = createTaskInputObjectSchema.superRefine(req
 
 export const updateTaskInputSchema = createTaskInputObjectSchema
   .partial()
-  .extend({ version: z.number().int().positive() })
   .superRefine(requireWaitingDetails);
+
+export const taskTransitionInputSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('start') }),
+  z.object({ type: z.literal('complete'), completionNote: z.string().trim().max(2_000).optional() }),
+  z.object({ type: z.literal('cancel') }),
+  z.object({ type: z.literal('restore') }),
+  z.object({
+    type: z.literal('wait'),
+    waitingOn: z.string().trim().min(1).max(200),
+    followUpAt: z.iso.datetime({ offset: true }),
+  }),
+]);
 
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type TaskPriority = z.infer<typeof taskPrioritySchema>;
 export type RecurrenceRule = z.infer<typeof recurrenceRuleSchema>;
 export type SubtaskDto = z.infer<typeof subtaskDtoSchema>;
 export type TaskDto = z.infer<typeof taskDtoSchema>;
-export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
-export type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
+export type CreateTaskInput = z.input<typeof createTaskInputSchema>;
+export type UpdateTaskInput = z.input<typeof updateTaskInputSchema>;
+export type TaskTransitionInput = z.input<typeof taskTransitionInputSchema>;
