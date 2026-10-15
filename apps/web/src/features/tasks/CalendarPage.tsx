@@ -1,16 +1,20 @@
 import type { TaskDto } from '@qetodo/contracts';
 import { useEffect, useMemo, useState } from 'react';
 
-import { createTasksApi } from '../../api/tasks.js';
 import type { HttpClient } from '../../api/http.js';
+import { createOfflineTasksApi } from '../../api/offlineTasks.js';
 import { TaskCalendar } from './components/TaskCalendar.js';
 import { TaskRow } from './components/TaskRow.js';
 
 export function CalendarPage({ client }: { client: HttpClient }) {
-  const api = useMemo(() => createTasksApi(client), [client]);
+  const api = useMemo(() => createOfflineTasksApi(client), [client]);
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
-  useEffect(() => { void api.list().then(setTasks); }, [api]);
+  useEffect(() => {
+    api.start();
+    void api.list().then(setTasks);
+    return () => api.stop();
+  }, [api]);
   const selected = tasks.filter((task) => task.dueAt?.slice(0, 10) === selectedDate);
   return (
     <section className="page workflow-page">

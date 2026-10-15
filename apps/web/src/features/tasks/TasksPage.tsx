@@ -2,17 +2,22 @@ import type { TaskDto } from '@qetodo/contracts';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-import { createTasksApi, type TaskDraft } from '../../api/tasks.js';
 import type { HttpClient } from '../../api/http.js';
+import { createOfflineTasksApi } from '../../api/offlineTasks.js';
+import type { TaskDraft } from '../../api/tasks.js';
 import { TaskEditorSheet } from './components/TaskEditorSheet.js';
 import { TaskFilters, type TaskFilterValue } from './components/TaskFilters.js';
 import { TaskRow } from './components/TaskRow.js';
 
 export function TasksPage({ client }: { client: HttpClient }) {
-  const api = useMemo(() => createTasksApi(client), [client]);
+  const api = useMemo(() => createOfflineTasksApi(client), [client]);
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [filters, setFilters] = useState<TaskFilterValue>({ text: '', status: '', priority: '' });
   const [editorOpen, setEditorOpen] = useState(false);
+  useEffect(() => {
+    api.start();
+    return () => api.stop();
+  }, [api]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void api.list(filters.text ? { text: filters.text } : {}).then(setTasks);

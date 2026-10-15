@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -72,7 +72,7 @@ describe('TodayPage interactions', () => {
     await user.type(screen.getByLabelText('任务标题'), '今日新任务');
     await user.click(screen.getByRole('button', { name: '保存任务' }));
 
-    expect(submittedDueAt).toMatch(/^2026-10-15T/);
+    await waitFor(() => expect(submittedDueAt).toMatch(/^2026-10-15T/));
     expect(await screen.findByText('今日新任务')).toBeInTheDocument();
   });
 
@@ -87,7 +87,7 @@ describe('TodayPage interactions', () => {
 
     await user.click(screen.getByRole('button', { name: '将“待改期”推迟一天' }));
 
-    expect(request).toHaveBeenCalledWith(expect.stringContaining('/api/tasks/'), expect.objectContaining({ method: 'PATCH' }));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('/api/tasks/'), expect.objectContaining({ method: 'PATCH' })));
     expect(screen.queryByRole('dialog', { name: '编辑任务' })).not.toBeInTheDocument();
   });
 });

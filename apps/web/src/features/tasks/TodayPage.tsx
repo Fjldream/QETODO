@@ -2,8 +2,9 @@ import type { TaskDto } from '@qetodo/contracts';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-import { createTasksApi, type TaskDraft } from '../../api/tasks.js';
 import type { HttpClient } from '../../api/http.js';
+import { createOfflineTasksApi } from '../../api/offlineTasks.js';
+import type { TaskDraft } from '../../api/tasks.js';
 import { TaskDetailSheet } from './components/TaskDetailSheet.js';
 import { TaskEditorSheet } from './components/TaskEditorSheet.js';
 import { TaskSection } from './components/TaskSection.js';
@@ -16,11 +17,17 @@ interface TodayPageProps {
 }
 
 export function TodayPage({ client, initialTasks, now = new Date() }: TodayPageProps) {
-  const api = useMemo(() => createTasksApi(client), [client]);
+  const api = useMemo(() => createOfflineTasksApi(client), [client]);
   const [tasks, setTasks] = useState<TaskDto[]>(initialTasks ?? []);
   const [editorOpen, setEditorOpen] = useState(false);
   const [selected, setSelected] = useState<TaskDto | null>(null);
   const [syncMessage, setSyncMessage] = useState(initialTasks ? '已同步' : '正在同步…');
+
+  useEffect(() => {
+    api.start();
+    if (initialTasks) void api.seed(initialTasks);
+    return () => api.stop();
+  }, [api, initialTasks]);
 
   useEffect(() => {
     if (initialTasks) return;

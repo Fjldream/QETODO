@@ -1,6 +1,9 @@
 import { CalendarDays, CheckCircle2, ListTodo, Settings } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
+import { ConflictStatus, SyncStatus } from '../sync/SyncStatus.js';
+import { PwaUpdatePrompt } from './PwaUpdatePrompt.js';
+
 const tabs = [
   { to: '/today', label: '今日', icon: CheckCircle2 },
   { to: '/tasks', label: '任务', icon: ListTodo },
@@ -11,6 +14,7 @@ const tabs = [
 export function AppShell() {
   return (
     <div className="app-shell">
+      <SyncStatus />
       <main className="app-content">
         <Outlet />
       </main>
@@ -32,6 +36,8 @@ export function AppShell() {
           </NavLink>
         ))}
       </nav>
+      <ConflictStatus />
+      <PwaUpdatePrompt />
     </div>
   );
 }
