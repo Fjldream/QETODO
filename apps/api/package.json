@@ -4,12 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "admin:set-password": "tsx scripts/set-admin-password.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
+    "test": "pnpm --filter @qetodo/contracts build && vitest run",
+    "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@qetodo/contracts": "workspace:*",
+    "@fastify/cookie": "^11.1.3",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.7",
@@ -18,6 +21,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }

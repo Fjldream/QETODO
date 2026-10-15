@@ -9,6 +9,8 @@ export const appConfigSchema = z.object({
   DATABASE_PATH: z.string().min(1),
   UPLOAD_DIR: z.string().min(1),
   BACKUP_DIR: z.string().min(1),
+  SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  ADMIN_USERNAME: z.string().trim().min(1).max(100).default('admin'),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;
