@@ -42,7 +42,7 @@ describe('authenticated application shell', () => {
     const labels = ['今日', '任务', '日历', '设置'];
     for (const label of labels) {
       const link = screen.getByRole('link', { name: label });
-      expect(link).toHaveStyle({ minHeight: '44px', minWidth: '44px' });
+      expect(link).toHaveClass('tab-item');
     }
     expect(navigation).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '今日' })).toHaveAttribute('aria-current', 'page');

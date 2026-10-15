@@ -13,7 +13,14 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
-  event.respondWith(caches.match(event.request).then((cached) => cached ?? fetch(event.request)));
+  event.respondWith(caches.match(event.request).then(async (cached) => {
+    if (cached) return cached;
+    if (event.request.mode === 'navigate') {
+      const shell = await caches.match('/index.html');
+      if (shell) return shell;
+    }
+    return fetch(event.request);
+  }));
 });
 self.addEventListener('push', (event) => {
   const payload = event.data?.json() as { title?: string; body?: string; taskId?: string; url?: string } | undefined;

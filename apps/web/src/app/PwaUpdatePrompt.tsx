@@ -11,7 +11,7 @@ export function PwaUpdatePrompt({ editorDirty = false, writesInFlight = 0 }: Pwa
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW();
+  } = useRegisterSW({ immediate: true });
   return (
     <UpdatePrompt
       needRefresh={needRefresh}

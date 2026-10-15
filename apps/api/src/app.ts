@@ -35,6 +35,11 @@ export function buildApp(dependencies: AppDependencies): FastifyInstance {
     dependencies.sessionTtlMs ?? 30 * 24 * 60 * 60 * 1_000,
   );
 
+  app.get('/api/health', async () => {
+    dependencies.database.sqlite.prepare('SELECT 1').get();
+    return { status: 'ok' };
+  });
+
   void app.register(cookie);
   void app.register(async (scope) =>
     registerAuthRoutes(scope, {

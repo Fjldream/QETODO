@@ -12,7 +12,7 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: null,
       manifest: false,
-      includeAssets: ['icons/app-icon.svg', 'icons/app-icon-192.png', 'icons/app-icon-512.png', 'icons/apple-touch-icon.png'],
+      includeAssets: ['icons/app-icon-192.png', 'icons/app-icon-512.png', 'icons/apple-touch-icon.png'],
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,webmanifest}'],
       },
@@ -29,6 +29,11 @@ export default defineConfig({
     },
   },
   server: {
+    proxy: {
+      '/api': 'http://127.0.0.1:3000',
+    },
+  },
+  preview: {
     proxy: {
       '/api': 'http://127.0.0.1:3000',
     },

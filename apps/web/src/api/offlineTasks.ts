@@ -23,7 +23,7 @@ interface QueuedCreate {
   input: CreateTaskInput;
   tags: string[];
   tagsOperationId: string;
-  attachments: Array<{ operationId: string; file: File }>;
+  attachments: Array<{ operationId: string; name: string; mediaType: string; bytes: ArrayBuffer }>;
 }
 
 export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = localDb) {
@@ -46,7 +46,7 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
           taskId: acknowledgement.data.id,
           kind: 'attachment',
           baseVersion: acknowledgement.data.version,
-          data: attachment.file,
+          data: { name: attachment.name, mediaType: attachment.mediaType, bytes: attachment.bytes },
           createdAt: new Date().toISOString(),
           retryCount: 0,
           lastError: null,
@@ -93,11 +93,17 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
       const now = new Date().toISOString();
       const input = draftToInput(draft);
       const task = optimisticTask(draft, now);
+      const attachments = await Promise.all(draft.imageFiles.map(async (file) => ({
+        operationId: crypto.randomUUID(),
+        name: file.name,
+        mediaType: file.type,
+        bytes: await file.arrayBuffer(),
+      })));
       return queue(task, operation(task.id, 'create', null, {
         input,
         tags: draft.tags,
         tagsOperationId: crypto.randomUUID(),
-        attachments: draft.imageFiles.map((file) => ({ operationId: crypto.randomUUID(), file })),
+        attachments,
       } satisfies QueuedCreate));
     },
     async update(id: string, version: number, patch: UpdateTaskInput): Promise<TaskDto> {
@@ -154,7 +160,8 @@ async function sendOperation(client: HttpClient, operation: OutboxOperation): Pr
     return acknowledgement;
   }
   if (operation.kind === 'attachment') {
-    const file = operation.data as File;
+    const queued = operation.data as { name: string; mediaType: string; bytes: ArrayBuffer };
+    const file = new File([queued.bytes], queued.name, { type: queued.mediaType });
     const form = new FormData();
     form.append('file', file, file.name);
     await client.request(`/api/tasks/${operation.taskId}/attachments`, { method: 'POST', body: form });

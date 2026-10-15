@@ -1,0 +1,19 @@
+[Unit]
+Description=Create and verify a QETODO backup
+Requires=qetodo.service
+After=qetodo.service
+
+[Service]
+Type=oneshot
+User=qetodo
+Group=qetodo
+WorkingDirectory=/opt/qetodo/current
+EnvironmentFile=/etc/qetodo/qetodo.env
+ExecStart=/opt/qetodo/current/node_modules/.bin/tsx apps/api/scripts/backup.ts ${DATABASE_PATH} ${UPLOAD_DIR} ${BACKUP_DIR}
+ExecStart=/opt/qetodo/current/node_modules/.bin/tsx apps/api/scripts/prune-backups.ts ${BACKUP_DIR} 14
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/qetodo /var/backups/qetodo

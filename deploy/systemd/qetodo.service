@@ -1,0 +1,23 @@
+[Unit]
+Description=QETODO quality task API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=qetodo
+Group=qetodo
+WorkingDirectory=/opt/qetodo/current
+EnvironmentFile=/etc/qetodo/qetodo.env
+ExecStart=/usr/bin/node apps/api/dist/server.js
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/qetodo /var/backups/qetodo
+
+[Install]
+WantedBy=multi-user.target

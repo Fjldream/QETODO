@@ -25,7 +25,6 @@ export function AppShell() {
             to={to}
             aria-label={label}
             className="tab-item"
-            style={{ minHeight: 44, minWidth: 44 }}
           >
             {({ isActive }) => (
               <>

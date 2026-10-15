@@ -38,4 +38,25 @@ describe('verified backup and atomic restore', () => {
     await restoreBackup(backup, { databasePath, uploadDir });
     expect(new Database(databasePath).prepare('SELECT value FROM sample').pluck().get()).toBe('original');
   });
+
+  it('restores a verified backup into an empty staging directory', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'qetodo-empty-restore-test-'));
+    roots.push(root);
+    const sourceDatabase = join(root, 'source.db');
+    const sourceUploads = join(root, 'source-uploads');
+    const backupDir = join(root, 'backups');
+    mkdirSync(sourceUploads);
+    const database = new Database(sourceDatabase);
+    database.exec('CREATE TABLE sample (value TEXT); INSERT INTO sample VALUES (\'restored\')');
+    database.close();
+    writeFileSync(join(sourceUploads, 'evidence.webp'), 'attachment');
+    const backup = await createBackup({ databasePath: sourceDatabase, uploadDir: sourceUploads, backupDir });
+
+    const targetDatabase = join(root, 'empty-target', 'qetodo.sqlite');
+    const targetUploads = join(root, 'empty-target', 'uploads');
+    await restoreBackup(backup, { databasePath: targetDatabase, uploadDir: targetUploads });
+
+    expect(new Database(targetDatabase).prepare('SELECT value FROM sample').pluck().get()).toBe('restored');
+    expect(readFileSync(join(targetUploads, 'evidence.webp'), 'utf8')).toBe('attachment');
+  });
 });
