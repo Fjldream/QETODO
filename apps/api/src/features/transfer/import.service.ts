@@ -53,10 +53,10 @@ export class ImportService {
   private insertTask(userId: string, task: TaskDto, storageNames: Map<string, string>, bundle: ExportBundle): void {
     const recurrenceInterval = task.recurrence.kind === 'none' ? 1 : task.recurrence.interval;
     this.database.sqlite.prepare(`INSERT INTO tasks
-      (id,user_id,title,description,status,priority,due_at,waiting_on,follow_up_at,reference,recurrence_kind,recurrence_interval,
+      (id,user_id,title,description,status,priority,due_at,planned_date,waiting_on,follow_up_at,reference,recurrence_kind,recurrence_interval,
        recurrence_series_id,completion_note,created_at,updated_at,completed_at,cancelled_at,deleted_at,version)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-      task.id, userId, task.title, task.description, task.status, task.priority, millis(task.dueAt), task.waitingOn,
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      task.id, userId, task.title, task.description, task.status, task.priority, millis(task.dueAt), task.plannedDate, task.waitingOn,
       millis(task.followUpAt), task.reference, task.recurrence.kind, recurrenceInterval, task.recurrenceSeriesId ?? null,
       task.completionNote ?? null, millis(task.createdAt), millis(task.updatedAt), millis(task.completedAt), millis(task.cancelledAt), millis(task.deletedAt), task.version,
     );

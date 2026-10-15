@@ -1,6 +1,6 @@
 import type { TaskDto } from '@qetodo/contracts';
 
-export type TodayGroupKey = 'overdue' | 'today' | 'waiting' | 'upcoming';
+export type TodayGroupKey = 'overdue' | 'today' | 'planned' | 'waiting' | 'upcoming';
 export interface TodayGroup {
   key: TodayGroupKey;
   title: string;
@@ -11,6 +11,7 @@ export type TodayGroups = TodayGroup[];
 const groupTitles: Record<TodayGroupKey, string> = {
   overdue: '已超期',
   today: '今天到期',
+  planned: '计划处理',
   waiting: '等待跟进',
   upcoming: '未来 7 天',
 };
@@ -26,6 +27,7 @@ export function groupTasksForToday(
   const grouped: Record<TodayGroupKey, TaskDto[]> = {
     overdue: [],
     today: [],
+    planned: [],
     waiting: [],
     upcoming: [],
   };
@@ -42,12 +44,13 @@ export function groupTasksForToday(
     const due = task.dueAt ? dateKey(new Date(task.dueAt), timezone) : null;
     if (due && due < today) grouped.overdue.push(task);
     else if (due === today) grouped.today.push(task);
+    else if (task.plannedDate && task.plannedDate <= today) grouped.planned.push(task);
     else if (task.status === 'waiting' && task.followUpAt) grouped.waiting.push(task);
     else if (due && due > today && due <= through) grouped.upcoming.push(task);
   }
 
   return (Object.keys(grouped) as TodayGroupKey[])
-    .map((key) => ({ key, title: groupTitles[key], tasks: grouped[key].sort(compareTasks) }))
+    .map((key) => ({ key, title: groupTitles[key], tasks: grouped[key].sort(key === 'planned' ? comparePlannedTasks : compareTasks) }))
     .filter(({ tasks: items }) => items.length > 0);
 }
 
@@ -70,7 +73,7 @@ function compareTasks(left: TaskDto, right: TaskDto): number {
   return leftTime.localeCompare(rightTime);
 }
 
-function dateKey(date: Date, timezone: string): string {
+export function dateKey(date: Date, timezone = 'Asia/Shanghai'): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
     year: 'numeric',
@@ -79,6 +82,30 @@ function dateKey(date: Date, timezone: string): string {
   }).formatToParts(date);
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${value.year}-${value.month}-${value.day}`;
+}
+
+export function isActiveTask(task: TaskDto): boolean {
+  return !task.deletedAt && task.status !== 'completed' && task.status !== 'cancelled';
+}
+
+export function taskCalendarDates(task: TaskDto): string[] {
+  if (!isActiveTask(task)) return [];
+  return [...new Set([task.plannedDate, task.dueAt ? dateKey(new Date(task.dueAt)) : null].filter((date): date is string => Boolean(date)))];
+}
+
+export function calendarReasons(task: TaskDto, date: string): string {
+  return [task.plannedDate === date ? '计划处理' : '', task.dueAt && dateKey(new Date(task.dueAt)) === date ? '到期' : ''].filter(Boolean).join(' · ');
+}
+
+export function formatPlannedDate(date: string): string {
+  const [, month, day] = date.split('-');
+  return `${Number(month)}月${Number(day)}日`;
+}
+
+function comparePlannedTasks(left: TaskDto, right: TaskDto): number {
+  return priorities[left.priority] - priorities[right.priority]
+    || (left.plannedDate ?? '').localeCompare(right.plannedDate ?? '')
+    || compareTasks(left, right);
 }
 
 function addDays(key: string, days: number): string {

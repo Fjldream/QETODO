@@ -44,6 +44,7 @@ export function createTasksApi(client: HttpClient) {
         status: draft.status,
         priority: draft.priority,
         dueAt: draft.dueAt,
+        plannedDate: draft.plannedDate,
         reminderTimes: draft.reminderTimes,
         waitingOn: draft.waitingOn,
         followUpAt: draft.followUpAt,

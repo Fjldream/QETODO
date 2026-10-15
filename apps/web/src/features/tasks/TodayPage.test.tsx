@@ -10,6 +10,24 @@ import { taskFixture as task } from './taskFixture.js';
 const now = new Date('2026-10-15T04:00:00.000Z');
 
 describe('groupTasksForToday', () => {
+  it('shows today and unfinished past plans even when their deadline is more than seven days away', () => {
+    const tasks = [
+      task('今天推进', { plannedDate: '2026-10-15', dueAt: '2026-10-23T08:45:00Z' }),
+      task('昨天未完', { plannedDate: '2026-10-14' }),
+      task('还未安排', { plannedDate: '2026-10-16', dueAt: '2026-11-01T08:00:00Z' }),
+      task('已完成计划', { plannedDate: '2026-10-15', status: 'completed' }),
+    ];
+    expect(groupTasksForToday(tasks, now, 'Asia/Shanghai').map(group => ({ key: group.key, titles: group.tasks.map(t => t.title) }))).toEqual([
+      { key: 'planned', titles: ['昨天未完', '今天推进'] },
+    ]);
+  });
+
+  it('shows a task only once when it is both planned and due today', () => {
+    const groups = groupTasksForToday([task('同时到期', { plannedDate: '2026-10-15', dueAt: '2026-10-15T08:00:00Z' })], now, 'Asia/Shanghai');
+    expect(groups.map(group => group.key)).toEqual(['today']);
+    expect(groups.flatMap(group => group.tasks)).toHaveLength(1);
+  });
+
   it('orders overdue, today, waiting follow-ups, then the next seven days', () => {
     const tasks = [
       task('future', { dueAt: '2026-10-18T02:00:00.000Z' }),

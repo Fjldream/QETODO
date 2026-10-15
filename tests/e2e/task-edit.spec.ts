@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { createTask, login } from './helpers.js';
 
-interface StoredTask { id: string; title: string; status: string; priority: string; reference: string | null; tags: Array<{ name: string }>; attachments: unknown[]; activities: Array<{ kind: string }> }
+interface StoredTask { id: string; title: string; status: string; priority: string; plannedDate: string | null; reference: string | null; tags: Array<{ name: string }>; attachments: unknown[]; activities: Array<{ kind: string }> }
 async function stored(page: Page): Promise<StoredTask[]> {
   return (await page.request.get('api/tasks?includeHistory=true')).json() as Promise<StoredTask[]>;
 }
@@ -72,6 +72,7 @@ test('can edit a task created offline and synchronize one final record after rel
   await page.locator('.task-row-main').filter({ hasText: title }).click();
   await page.getByRole('button', { name: '编辑任务' }).click();
   await page.getByLabel('任务标题').fill(`${title}-已修改`);
+  await page.getByLabel('计划处理日期', { exact: true }).fill('2026-10-14');
   await page.getByRole('dialog', { name: '编辑任务' }).getByLabel('状态').selectOption('in_progress');
   await page.getByRole('button', { name: '供应商', exact: true }).click();
   await page.getByRole('button', { name: '保存任务' }).click();
@@ -83,6 +84,6 @@ test('can edit a task created offline and synchronize one final record after rel
   await context.setOffline(false);
   await expect.poll(async () => {
     const matches = (await stored(page)).filter(task => task.title.startsWith(title));
-    return matches.length === 1 && matches[0]?.title === `${title}-已修改` && matches[0].status === 'in_progress' && matches[0].tags.some(tag => tag.name === '供应商') && matches[0].activities.filter(item => item.kind === 'manual').length === 1;
+    return matches.length === 1 && matches[0]?.title === `${title}-已修改` && matches[0].plannedDate === '2026-10-14' && matches[0].status === 'in_progress' && matches[0].tags.some(tag => tag.name === '供应商') && matches[0].activities.filter(item => item.kind === 'manual').length === 1;
   }, { timeout: 20_000 }).toBe(true);
 });

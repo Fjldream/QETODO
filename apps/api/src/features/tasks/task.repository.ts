@@ -15,12 +15,12 @@ export class TaskRepository {
     this.database.sqlite
       .prepare(
         `INSERT INTO tasks
-         (id, user_id, title, description, status, priority, due_at, waiting_on,
+         (id, user_id, title, description, status, priority, due_at, planned_date, waiting_on,
           follow_up_at, reference, recurrence_kind, recurrence_interval,
           recurrence_series_id, completion_note, created_at, updated_at,
           completed_at, cancelled_at, deleted_at, version)
          VALUES
-         (@id, @userId, @title, @description, @status, @priority, @dueAt, @waitingOn,
+         (@id, @userId, @title, @description, @status, @priority, @dueAt, @plannedDate, @waitingOn,
           @followUpAt, @reference, @recurrenceKind, @recurrenceInterval,
           @recurrenceSeriesId, @completionNote, @createdAt, @updatedAt,
           @completedAt, @cancelledAt, @deletedAt, @version)`,
@@ -34,7 +34,7 @@ export class TaskRepository {
       .prepare(
         `UPDATE tasks SET
           title = @title, description = @description, status = @status,
-          priority = @priority, due_at = @dueAt, waiting_on = @waitingOn,
+          priority = @priority, due_at = @dueAt, planned_date = @plannedDate, waiting_on = @waitingOn,
           follow_up_at = @followUpAt, reference = @reference,
           recurrence_kind = @recurrenceKind, recurrence_interval = @recurrenceInterval,
           recurrence_series_id = @recurrenceSeriesId, completion_note = @completionNote,
@@ -245,7 +245,7 @@ function parseMetadata(value: string | null): Record<string, unknown> | null {
 }
 
 const taskSelect = `SELECT
-  id, title, description, status, priority, due_at AS dueAt,
+  id, title, description, status, priority, due_at AS dueAt, planned_date AS plannedDate,
   waiting_on AS waitingOn, follow_up_at AS followUpAt, reference,
   recurrence_kind AS recurrenceKind, recurrence_interval AS recurrenceInterval,
   recurrence_series_id AS recurrenceSeriesId, completion_note AS completionNote,
@@ -262,6 +262,7 @@ function toTaskParameters(task: TaskDto, userId: string) {
     status: task.status,
     priority: task.priority,
     dueAt: task.dueAt ? new Date(task.dueAt).getTime() : null,
+    plannedDate: task.plannedDate ?? null,
     waitingOn: task.waitingOn,
     followUpAt: task.followUpAt ? new Date(task.followUpAt).getTime() : null,
     reference: task.reference,

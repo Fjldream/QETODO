@@ -57,6 +57,7 @@ export const tasks = sqliteTable(
     status: text('status').$type<TaskStatus>().notNull(),
     priority: text('priority').$type<TaskPriority>().notNull(),
     dueAt: integer('due_at', { mode: 'timestamp_ms' }),
+    plannedDate: text('planned_date'),
     waitingOn: text('waiting_on'),
     followUpAt: integer('follow_up_at', { mode: 'timestamp_ms' }),
     reference: text('reference'),

@@ -17,6 +17,20 @@ import { TaskEditorSheet } from './components/TaskEditorSheet.js';
 import { taskFixture } from './taskFixture.js';
 
 describe('TaskEditorSheet', () => {
+  it('edits or clears a planned date without changing the deadline', async () => {
+    const onSave = vi.fn();
+    const user = userEvent.setup();
+    render(<TaskEditorSheet open task={taskFixture('提前推进', { plannedDate: '2026-10-15', dueAt: '2026-10-23T08:45:00.000Z' })} onClose={vi.fn()} onSave={onSave} />);
+    expect(screen.getByLabelText('计划处理日期')).toHaveValue('2026-10-15');
+    await user.clear(screen.getByLabelText('计划处理日期'));
+    await user.type(screen.getByLabelText('计划处理日期'), '2026-10-16');
+    await user.click(screen.getByRole('button', { name: '保存任务' }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ plannedDate: '2026-10-16', dueAt: '2026-10-23T08:45:00.000Z' }));
+    await user.clear(screen.getByLabelText('计划处理日期'));
+    await user.click(screen.getByRole('button', { name: '保存任务' }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ plannedDate: null }));
+  });
+
   it('prefills an existing task and lets the user edit fields, state, and initial tags', async () => {
     const onSave = vi.fn();
     const user = userEvent.setup();

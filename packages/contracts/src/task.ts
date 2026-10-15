@@ -82,6 +82,7 @@ const taskDtoObjectSchema = z.object({
   status: taskStatusSchema,
   priority: taskPrioritySchema,
   dueAt: z.iso.datetime({ offset: true }).nullable(),
+  plannedDate: z.iso.date().nullable().default(null),
   reminderTimes: z.array(z.iso.datetime({ offset: true })),
   ...waitingFields,
   reference: z.string().trim().max(200).nullable(),
@@ -103,22 +104,37 @@ const taskDtoObjectSchema = z.object({
 
 export const taskDtoSchema = taskDtoObjectSchema.superRefine(requireWaitingDetails);
 
-const createTaskInputObjectSchema = z.object({
+const taskInputObjectSchema = z.object({
   title: z.string().trim().min(1).max(200),
-  description: z.string().max(5_000).default(''),
-  status: taskStatusSchema.default('pending'),
-  priority: taskPrioritySchema.default('normal'),
-  dueAt: z.iso.datetime({ offset: true }).nullable().default(null),
-  reminderTimes: z.array(z.iso.datetime({ offset: true })).default([]),
-  waitingOn: waitingFields.waitingOn.optional().default(null),
-  followUpAt: waitingFields.followUpAt.optional().default(null),
-  reference: z.string().trim().max(200).nullable().default(null),
-  tagIds: z.array(z.uuid()).default([]),
-  subtasks: z
-    .array(z.object({ title: z.string().trim().min(1).max(200) }))
-    .default([]),
-  recurrence: recurrenceRuleSchema.default({ kind: 'none' }),
+  description: z.string().max(5_000),
+  status: taskStatusSchema,
+  priority: taskPrioritySchema,
+  dueAt: z.iso.datetime({ offset: true }).nullable(),
+  plannedDate: z.iso.date().nullable(),
+  reminderTimes: z.array(z.iso.datetime({ offset: true })),
+  ...waitingFields,
+  reference: z.string().trim().max(200).nullable(),
+  tagIds: z.array(z.uuid()),
+  subtasks: z.array(z.object({ title: z.string().trim().min(1).max(200) })),
+  recurrence: recurrenceRuleSchema,
   completionNote: z.string().trim().max(2_000).optional(),
+});
+
+// Defaults apply only to creation. PATCH must preserve every omitted field.
+const fields = taskInputObjectSchema.shape;
+const createTaskInputObjectSchema = taskInputObjectSchema.extend({
+  description: fields.description.default(''),
+  status: fields.status.default('pending'),
+  priority: fields.priority.default('normal'),
+  dueAt: fields.dueAt.default(null),
+  plannedDate: fields.plannedDate.default(null),
+  reminderTimes: fields.reminderTimes.default([]),
+  waitingOn: fields.waitingOn.default(null),
+  followUpAt: fields.followUpAt.default(null),
+  reference: fields.reference.default(null),
+  tagIds: fields.tagIds.default([]),
+  subtasks: fields.subtasks.default([]),
+  recurrence: fields.recurrence.default({ kind: 'none' }),
 });
 
 export const createTaskInputSchema = createTaskInputObjectSchema.superRefine((value, context) => {
@@ -128,7 +144,7 @@ export const createTaskInputSchema = createTaskInputObjectSchema.superRefine((va
   }
 });
 
-export const updateTaskInputSchema = createTaskInputObjectSchema
+export const updateTaskInputSchema = taskInputObjectSchema
   .partial()
   .extend({
     tagNames: z.array(z.string().trim().min(1).max(50)).max(30).optional(),

@@ -131,6 +131,7 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
       const patch: UpdateTaskInput = {
         title: draft.title, description: draft.description, status: draft.status,
         priority: draft.priority, dueAt: draft.dueAt, reminderTimes: draft.reminderTimes,
+        plannedDate: draft.plannedDate,
         waitingOn: draft.waitingOn, followUpAt: draft.followUpAt, reference: draft.reference,
         recurrence: draft.recurrence, tagNames: draft.tags,
         ...(draft.confirmOpenSubtasks ? { confirmOpenSubtasks: true } : {}),
@@ -229,6 +230,7 @@ function draftToInput(draft: TaskDraft): CreateTaskInput {
     status: draft.status,
     priority: draft.priority,
     dueAt: draft.dueAt,
+    plannedDate: draft.plannedDate,
     reminderTimes: draft.reminderTimes,
     waitingOn: draft.waitingOn,
     followUpAt: draft.followUpAt,
@@ -251,6 +253,7 @@ function optimisticTask(draft: TaskDraft, now: string): TaskDto {
     status: draft.status ?? 'pending',
     priority: draft.priority ?? 'normal',
     dueAt: draft.dueAt ?? null,
+    plannedDate: draft.plannedDate ?? null,
     reminderTimes: draft.reminderTimes ?? [],
     waitingOn: draft.waitingOn ?? null,
     followUpAt: draft.followUpAt ?? null,

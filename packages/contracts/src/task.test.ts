@@ -5,6 +5,7 @@ import {
   taskDtoSchema,
   taskPrioritySchema,
   taskStatusSchema,
+  updateTaskInputSchema,
 } from './task.js';
 
 const validTask = {
@@ -47,6 +48,22 @@ describe('task enums', () => {
 });
 
 describe('task validation', () => {
+  it('preserves an optional calendar-only planned date and defaults legacy tasks to no plan', () => {
+    expect(createTaskInputSchema.parse({ title: '提前推进', plannedDate: '2026-10-15' })).toHaveProperty('plannedDate', '2026-10-15');
+    expect(taskDtoSchema.parse(validTask)).toHaveProperty('plannedDate', null);
+    expect(updateTaskInputSchema.parse({ title: '仅改标题' })).not.toHaveProperty('plannedDate');
+    expect(updateTaskInputSchema.parse({ plannedDate: null })).toHaveProperty('plannedDate', null);
+  });
+
+  it('does not apply creation defaults to a partial edit', () => {
+    expect(updateTaskInputSchema.parse({ plannedDate: '2026-10-16' })).toEqual({ plannedDate: '2026-10-16' });
+    expect(updateTaskInputSchema.parse({ title: '只改标题' })).toEqual({ title: '只改标题' });
+  });
+
+  it.each(['2026-02-30', '2026-13-01', '2026-10-15T00:00:00Z'])('rejects invalid planned dates: %s', plannedDate => {
+    expect(createTaskInputSchema.safeParse({ title: '计划', plannedDate }).success).toBe(false);
+  });
+
   it('allows the completion note to be omitted', () => {
     expect(taskDtoSchema.parse(validTask)).not.toHaveProperty('completionNote');
   });

@@ -23,11 +23,13 @@ export function TodayPage({ client, initialTasks, now = new Date() }: TodayPageP
         <div><p className="eyebrow">{formatToday(now)}</p><h1>今日</h1><p className="sync-state">{workspace.syncMessage}</p></div>
         <button className="add-button" type="button" aria-label="新建任务" onClick={workspace.openCreate}><Plus /></button>
       </header>
+      <div className="task-scroll" role="region" aria-label="任务列表" tabIndex={0}>
       {groups.length ? groups.map((group) => (
         <TaskSection key={group.key} title={group.title} tasks={group.tasks} onSelect={workspace.openTask} onPostpone={task => void workspace.postpone(task)} />
       )) : (
         <div className="empty-state"><span className="empty-state-symbol">✓</span><h2>今天安排清楚了</h2><p>点右上角“添加”记录第一条任务。</p></div>
       )}
+      </div>
       {workspace.error ? <p role="alert" className="inline-error">{workspace.error}</p> : null}
       <TaskDialogs workspace={workspace} defaultDueAt={todayDefaultDueAt(now, 'Asia/Shanghai')} />
     </section>

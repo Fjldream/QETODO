@@ -12,7 +12,7 @@ export class ExportService {
   constructor(private readonly database: AppDatabase, private readonly clock: Clock) {}
 
   toCsv(userId: string): string {
-    const header = ['标题', '状态', '截止时间', '标签', '等待对象', '下次跟进', '关联编号'];
+    const header = ['标题', '状态', '截止时间', '标签', '等待对象', '下次跟进', '关联编号', '计划处理日期'];
     const rows = this.tasks(userId).map((task) => [
       task.title,
       statusLabel(task.status),
@@ -21,6 +21,7 @@ export class ExportService {
       task.waitingOn ?? '',
       task.followUpAt ?? '',
       task.reference ?? '',
+      task.plannedDate ?? '',
     ]);
     return `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n`;
   }

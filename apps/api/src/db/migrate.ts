@@ -15,6 +15,10 @@ const migrations = [
     id: 3,
     file: new URL('../../migrations/0003_notifications.sql', import.meta.url),
   },
+  {
+    id: 4,
+    file: new URL('../../migrations/0004_task_planned_date.sql', import.meta.url),
+  },
 ] as const;
 
 export function migrateDatabase(database: AppDatabase): void {

@@ -14,6 +14,7 @@ export interface TaskRow {
   status: TaskDto['status'];
   priority: TaskDto['priority'];
   dueAt: number | null;
+  plannedDate: string | null;
   waitingOn: string | null;
   followUpAt: number | null;
   reference: string | null;
@@ -51,6 +52,7 @@ export function mapTaskRow(row: TaskRow, relations: TaskRelations): TaskDto {
     status: row.status,
     priority: row.priority,
     dueAt: toIso(row.dueAt),
+    plannedDate: row.plannedDate,
     reminderTimes: relations.reminderTimes.map((time) => new Date(time).toISOString()),
     waitingOn: row.waitingOn,
     followUpAt: toIso(row.followUpAt),

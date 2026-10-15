@@ -10,6 +10,7 @@ import type { AppDatabase } from '../../db/client.js';
 import { migrateDatabase } from '../../db/migrate.js';
 import { createTestDatabase } from '../../db/testDatabase.js';
 import { ImportService } from './import.service.js';
+import { ExportService } from './export.service.js';
 
 const userId = '7d831d11-27b9-42f3-bce7-005d4ed3c005';
 
@@ -43,6 +44,16 @@ describe('ImportService', () => {
     expect(first.tasks).toBe(1);
     expect(second.tasks).toBe(1);
     expect(database.sqlite.prepare('SELECT count(*) FROM tasks WHERE user_id = ?').pluck().get(userId)).toBe(1);
+  });
+
+  it('round-trips planned dates in JSON and CSV without moving deadlines', async () => {
+    const value = bundle();
+    value.tasks[0]!.plannedDate = '2026-10-15';
+    value.tasks[0]!.dueAt = '2026-10-23T08:45:00.000Z';
+    await new ImportService(database, uploadDir).apply(userId, value);
+    const exporter = new ExportService(database, { now: () => new Date('2026-10-15T02:00:00Z') });
+    expect((await exporter.toJson(userId, uploadDir)).tasks[0]).toMatchObject({ plannedDate: '2026-10-15', dueAt: '2026-10-23T08:45:00.000Z' });
+    expect(exporter.toCsv(userId)).toContain('2026-10-15');
   });
 });
 

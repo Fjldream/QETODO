@@ -2,7 +2,7 @@ import type { TaskDto } from '@qetodo/contracts';
 import { Check, RotateCcw, Trash2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { formatTaskDate, latestProgress } from '../taskViewModel.js';
+import { formatPlannedDate, formatTaskDate, latestProgress } from '../taskViewModel.js';
 import { AttachmentGallery } from '../../attachments/AttachmentGallery.js';
 import { handleDialogKey } from './TaskEditorSheet.js';
 
@@ -89,6 +89,7 @@ export function TaskDetailSheet(props: TaskDetailSheetProps) {
             {error ? <p className="inline-error" role="alert">{error}</p> : null}
           </section>
           {props.task.description ? <p className="task-description">{props.task.description}</p> : null}
+          {props.task.plannedDate ? <DetailRow label="计划处理日期" value={formatPlannedDate(props.task.plannedDate)} /> : null}
           {props.task.reference ? <DetailRow label="关联编号" value={props.task.reference} /> : null}
           {props.task.tags.length ? <DetailRow label="标签" value={props.task.tags.map(({ name }) => name).join(' · ')} /> : null}
 

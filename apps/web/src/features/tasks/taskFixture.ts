@@ -8,6 +8,7 @@ export function taskFixture(title: string, patch: Partial<TaskDto> = {}): TaskDt
     status: 'pending',
     priority: 'normal',
     dueAt: null,
+    plannedDate: null,
     reminderTimes: [],
     waitingOn: null,
     followUpAt: null,

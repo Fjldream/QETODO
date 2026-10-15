@@ -51,6 +51,18 @@ describe('TaskService', () => {
     expect(updated.updatedAt).toBe(now.toISOString());
   });
 
+  it('persists, edits, and clears planned dates independently of the deadline', () => {
+    const dueAt = '2026-10-23T08:45:00.000Z';
+    const task = service.create({ title: '提前推进', dueAt, plannedDate: '2026-10-15' }, randomUUID());
+    expect(service.get(task.id)).toMatchObject({ plannedDate: '2026-10-15', dueAt });
+    const edited = service.update(task.id, task.version, { plannedDate: '2026-10-16' }, randomUUID());
+    expect(service.list()[0]).toMatchObject({ plannedDate: '2026-10-16', dueAt });
+    const renamed = service.update(task.id, edited.version, { title: '只改标题' }, randomUUID());
+    expect(renamed.plannedDate).toBe('2026-10-16');
+    service.update(task.id, renamed.version, { plannedDate: null }, randomUUID());
+    expect(service.get(task.id)).toMatchObject({ plannedDate: null, dueAt });
+  });
+
   it('edits fields and tags atomically while preserving task identity and detail history', () => {
     const original = service.create({ title: '整改跟进' }, randomUUID());
     const tagged = service.setTags(original.id, 1, ['旧标签'], randomUUID());

@@ -34,6 +34,7 @@ function TaskEditorForm({ task, defaultDueAt, suggestedTags = [], onClose, onSav
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'pending');
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'normal');
   const [dueAt, setDueAt] = useState(task ? localDateTime(task.dueAt) : defaultDueAt ?? '');
+  const [plannedDate, setPlannedDate] = useState(task?.plannedDate ?? '');
   const [waitingOn, setWaitingOn] = useState(task?.waitingOn ?? '');
   const [followUpAt, setFollowUpAt] = useState(localDateTime(task?.followUpAt));
   const [tagInput, setTagInput] = useState('');
@@ -86,6 +87,7 @@ function TaskEditorForm({ task, defaultDueAt, suggestedTags = [], onClose, onSav
       status,
       priority,
       dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+      plannedDate: plannedDate || null,
       reminderTimes,
       waitingOn: status === 'waiting' ? waitingOn.trim() : null,
       followUpAt: status === 'waiting' ? new Date(followUpAt).toISOString() : null,
@@ -159,6 +161,11 @@ function TaskEditorForm({ task, defaultDueAt, suggestedTags = [], onClose, onSav
               </select>
             </label>
           </div>
+          <label className="editor-field" htmlFor="task-planned-date">
+            <span>计划处理日期</span>
+            <input id="task-planned-date" type="date" value={plannedDate} onChange={event => setPlannedDate(event.target.value)} aria-describedby="planned-date-hint" />
+          </label>
+          <p id="planned-date-hint" className="field-hint">安排何时开始推进，与截止时间分开；未完成的计划会继续留在“今日”。</p>
           <label className="editor-field" htmlFor="task-due">
             <span>截止时间</span>
             <input id="task-due" type="datetime-local" value={dueAt} onChange={(event) => {

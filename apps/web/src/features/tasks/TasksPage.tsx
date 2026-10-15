@@ -19,8 +19,10 @@ export function TasksPage({ client }: { client: HttpClient }) {
     <section className="page workflow-page">
       <header className="page-toolbar large-title-header"><div><p className="eyebrow">全部工作</p><h1>任务</h1></div><button className="add-button" type="button" aria-label="新建任务" onClick={workspace.openCreate}><Plus /></button></header>
       <TaskFilters value={filters} onChange={setFilters} />
+      <div className="task-scroll" role="region" aria-label="任务列表" tabIndex={0}>
       <div className="task-list all-task-list">{visible.map(task => <TaskRow key={task.id} task={task} onSelect={workspace.openTask} onPostpone={task => void workspace.postpone(task)} />)}</div>
       {!visible.length ? <p className="empty-state">当前筛选下没有任务</p> : null}
+      </div>
       {workspace.error ? <p role="alert" className="inline-error">{workspace.error}</p> : null}
       <TaskDialogs workspace={workspace} />
     </section>
