@@ -34,9 +34,9 @@ export function AppRouter(props: AppRouterProps) {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route path="/today" element={<TodayPage />} />
-        <Route path="/tasks" element={<TasksPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/today" element={<TodayPage client={props.client} />} />
+        <Route path="/tasks" element={<TasksPage client={props.client} />} />
+        <Route path="/calendar" element={<CalendarPage client={props.client} />} />
         <Route
           path="/settings"
           element={
