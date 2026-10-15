@@ -86,3 +86,7 @@ function addDays(key: string, days: number): string {
   const date = new Date(Date.UTC(year!, month! - 1, day! + days));
   return date.toISOString().slice(0, 10);
 }
+
+export function latestProgress(task: TaskDto) {
+  return [...task.activities].filter(item => item.kind === 'manual' && item.message).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+}

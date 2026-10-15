@@ -130,6 +130,10 @@ export const createTaskInputSchema = createTaskInputObjectSchema.superRefine((va
 
 export const updateTaskInputSchema = createTaskInputObjectSchema
   .partial()
+  .extend({
+    tagNames: z.array(z.string().trim().min(1).max(50)).max(30).optional(),
+    confirmOpenSubtasks: z.boolean().optional(),
+  })
   .superRefine(requireWaitingDetails);
 
 export const taskTransitionInputSchema = z.discriminatedUnion('type', [

@@ -1,41 +1,28 @@
-import type { TaskDto } from '@qetodo/contracts';
 import { Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import type { HttpClient } from '../../api/http.js';
-import { createOfflineTasksApi } from '../../api/offlineTasks.js';
-import type { TaskDraft } from '../../api/tasks.js';
-import { TaskEditorSheet } from './components/TaskEditorSheet.js';
+import { TaskDialogs } from './components/TaskDialogs.js';
 import { TaskFilters, type TaskFilterValue } from './components/TaskFilters.js';
 import { TaskRow } from './components/TaskRow.js';
+import { useTaskWorkspace } from './useTaskWorkspace.js';
 
 export function TasksPage({ client }: { client: HttpClient }) {
-  const api = useMemo(() => createOfflineTasksApi(client), [client]);
-  const [tasks, setTasks] = useState<TaskDto[]>([]);
+  const workspace = useTaskWorkspace(client);
   const [filters, setFilters] = useState<TaskFilterValue>({ text: '', status: '', priority: '' });
-  const [editorOpen, setEditorOpen] = useState(false);
-  useEffect(() => {
-    api.start();
-    return () => api.stop();
-  }, [api]);
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void api.list(filters.text ? { text: filters.text } : {}).then(setTasks);
-    }, 180);
-    return () => window.clearTimeout(timer);
-  }, [api, filters.text]);
-  const visible = tasks.filter((task) => (!filters.status || task.status === filters.status) && (!filters.priority || task.priority === filters.priority));
-  const save = async (draft: TaskDraft) => {
-    const task = await api.create(draft);
-    setTasks((items) => [task, ...items]);
-    setEditorOpen(false);
-  };
+  const text = filters.text.trim().toLocaleLowerCase();
+  const visible = workspace.tasks.filter(task => !task.deletedAt
+    && (filters.status ? task.status === filters.status : !['completed', 'cancelled'].includes(task.status))
+    && (!filters.priority || task.priority === filters.priority)
+    && (!text || [task.title, task.description, task.reference, task.waitingOn, ...task.tags.map(tag => tag.name)].filter(Boolean).join(' ').toLocaleLowerCase().includes(text)));
   return (
     <section className="page workflow-page">
-      <header className="page-toolbar large-title-header"><div><p className="eyebrow">全部工作</p><h1>任务</h1></div><button className="add-button" type="button" aria-label="新建任务" onClick={() => setEditorOpen(true)}><Plus /></button></header>
+      <header className="page-toolbar large-title-header"><div><p className="eyebrow">全部工作</p><h1>任务</h1></div><button className="add-button" type="button" aria-label="新建任务" onClick={workspace.openCreate}><Plus /></button></header>
       <TaskFilters value={filters} onChange={setFilters} />
-      <div className="task-list all-task-list">{visible.map((task) => <TaskRow key={task.id} task={task} onSelect={() => undefined} onPostpone={() => undefined} />)}</div>
-      <TaskEditorSheet open={editorOpen} onClose={() => setEditorOpen(false)} onSave={save} />
+      <div className="task-list all-task-list">{visible.map(task => <TaskRow key={task.id} task={task} onSelect={workspace.openTask} onPostpone={task => void workspace.postpone(task)} />)}</div>
+      {!visible.length ? <p className="empty-state">当前筛选下没有任务</p> : null}
+      {workspace.error ? <p role="alert" className="inline-error">{workspace.error}</p> : null}
+      <TaskDialogs workspace={workspace} />
     </section>
   );
 }

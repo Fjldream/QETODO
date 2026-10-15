@@ -51,6 +51,39 @@ describe('TaskService', () => {
     expect(updated.updatedAt).toBe(now.toISOString());
   });
 
+  it('edits fields and tags atomically while preserving task identity and detail history', () => {
+    const original = service.create({ title: '整改跟进' }, randomUUID());
+    const tagged = service.setTags(original.id, 1, ['旧标签'], randomUUID());
+    const detailed = service.createSubtask(original.id, tagged.version, { title: '复核', sortOrder: 0 }, randomUUID());
+    const updated = service.update(original.id, detailed.version, {
+      title: '整改复核', reference: 'NCR-008', priority: 'urgent', tagNames: ['质量异常', '整改跟进'],
+    }, randomUUID());
+    expect(updated.id).toBe(original.id);
+    expect(updated.tags.map(tag => tag.name).sort()).toEqual(['整改跟进', '质量异常']);
+    expect(updated.subtasks).toEqual(detailed.subtasks);
+    expect(updated.activities.length).toBeGreaterThan(detailed.activities.length);
+    expect(service.list()).toHaveLength(1);
+  });
+
+  it('records timestamps and state history when the editor changes status and reopens a task', () => {
+    const task = service.create({ title: '检验闭环' }, randomUUID());
+    const completed = service.update(task.id, 1, { status: 'completed' }, randomUUID());
+    expect(completed.completedAt).toBe(now.toISOString());
+    const cancelled = service.update(task.id, 2, { status: 'cancelled' }, randomUUID());
+    expect(cancelled).toMatchObject({ cancelledAt: now.toISOString(), completedAt: null });
+    const reopened = service.update(task.id, 3, { status: 'in_progress' }, randomUUID());
+    expect(reopened).toMatchObject({ status: 'in_progress', completedAt: null, cancelledAt: null });
+    expect(reopened.activities.filter(item => item.kind === 'status_changed')).toHaveLength(3);
+  });
+
+  it('requires explicit subtask confirmation before an edit completes the task', () => {
+    const task = service.create({ title: '含检查项' }, randomUUID());
+    const detailed = service.createSubtask(task.id, 1, { title: '待检查', sortOrder: 0 }, randomUUID());
+    expect(() => service.update(task.id, detailed.version, { status: 'completed', tagNames: ['不得写入'] }, randomUUID())).toThrow('OPEN_SUBTASKS_CONFIRMATION_REQUIRED');
+    expect(service.get(task.id).tags).toHaveLength(0);
+    expect(service.update(task.id, detailed.version, { status: 'completed', confirmOpenSubtasks: true }, randomUUID()).status).toBe('completed');
+  });
+
   it('rejects waiting status without both waiting fields', () => {
     const task = service.create({ title: '等待回复' }, randomUUID());
 

@@ -78,6 +78,7 @@ export async function registerTaskRoutes(
         ...(query.waitingOn ? { waitingOn: query.waitingOn } : {}),
         ...(query.dueFrom ? { dueFrom: query.dueFrom } : {}),
         ...(query.dueTo ? { dueTo: query.dueTo } : {}),
+        includeHistory: query.includeHistory === 'true',
       }),
     );
   });

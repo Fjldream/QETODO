@@ -144,6 +144,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .inline-input input { min-width: 0; flex: 1; }
 .inline-input button { width: 44px; border: 0; border-radius: 10px; background: var(--action); color: white; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.tag-suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-suggestions button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--separator); border-radius: 12px; background: var(--surface); color: var(--text-secondary); font-size: 14px; }
+.tag-suggestions button[aria-pressed="true"] { border-color: var(--action); background: color-mix(in srgb, var(--action) 12%, var(--surface)); color: var(--action); }
+.tag-suggestions button:active { opacity: .65; }
 .tag-list button { display: flex; min-height: 30px; align-items: center; gap: 4px; padding: 4px 9px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--action) 13%, transparent); color: var(--action); }
 .image-picker { display: flex; min-height: 44px; align-items: center; gap: 8px; color: var(--action); }
 .image-placeholder-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
@@ -153,8 +157,19 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .detail-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px 16px 16px; }
 .detail-header h2 { margin: 10px 0 5px; font-size: 25px; line-height: 1.12; }
 .detail-header p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.detail-header-actions { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
+.progress-summary { margin-bottom: 20px; padding: 12px 14px; border-radius: 14px; background: var(--surface); }
+.progress-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.progress-title h3 { margin: 0; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
+.progress-summary p { margin: 4px 0 8px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.progress-summary time { color: var(--text-secondary); font-size: 12px; }
+.progress-summary textarea { width: 100%; }
+.task-row-copy .task-row-progress { color: var(--text); font-size: 13px; }
 .status-badge { display: inline-flex; padding: 4px 8px; border-radius: 999px; background: var(--surface); color: var(--text-secondary); font-size: 11px; font-weight: 650; }
 .detail-body { padding-top: 0; }
+.detail-sheet { display: flex; flex-direction: column; }
+.detail-sheet .detail-body { flex: 1; min-height: 0; max-height: none; }
+.detail-sheet .detail-header, .detail-sheet .detail-actions, .detail-sheet .undo-bar { flex-shrink: 0; }
 .task-description { margin: 0 0 18px; line-height: 1.55; white-space: pre-wrap; }
 .detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 0.5px solid var(--separator); font-size: 14px; }
 .detail-row span { color: var(--text-secondary); }

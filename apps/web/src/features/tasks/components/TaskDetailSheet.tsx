@@ -2,7 +2,7 @@ import type { TaskDto } from '@qetodo/contracts';
 import { Check, RotateCcw, Trash2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { formatTaskDate } from '../taskViewModel.js';
+import { formatTaskDate, latestProgress } from '../taskViewModel.js';
 import { AttachmentGallery } from '../../attachments/AttachmentGallery.js';
 import { handleDialogKey } from './TaskEditorSheet.js';
 
@@ -13,12 +13,18 @@ interface TaskDetailSheetProps {
   onComplete(confirmOpenSubtasks: boolean): Promise<void> | void;
   onDelete(): Promise<void> | void;
   onUndo(): Promise<void> | void;
+  onEdit?(): void;
+  onAddProgress?(message: string): Promise<void> | void;
 }
 
 export function TaskDetailSheet(props: TaskDetailSheetProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [confirming, setConfirming] = useState(false);
   const [undoMessage, setUndoMessage] = useState('');
+  const [recording, setRecording] = useState(false);
+  const [progressText, setProgressText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   if (!props.open) return null;
 
   const complete = async (confirmed: boolean) => {
@@ -36,6 +42,18 @@ export function TaskDetailSheet(props: TaskDetailSheetProps) {
   };
   const openSubtasks = props.task.subtasks.some(({ completed }) => !completed);
   const activities = [...props.task.activities].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  const progress = latestProgress(props.task);
+  const recordProgress = async () => {
+    if (busy || !progressText.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      await props.onAddProgress?.(progressText.trim());
+      setProgressText('');
+      setRecording(false);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '进展保存失败，请重试'); }
+    finally { setBusy(false); }
+  };
 
   return (
     <div className="sheet-backdrop">
@@ -54,9 +72,22 @@ export function TaskDetailSheet(props: TaskDetailSheetProps) {
             <h2>{props.task.title}</h2>
             <p>{formatTaskDate(props.task.dueAt)}</p>
           </div>
-          <button className="round-button" type="button" aria-label="关闭详情" onClick={props.onClose}><X size={20} /></button>
+          <div className="detail-header-actions">
+            {props.onEdit && !props.task.deletedAt ? <button className="text-button strong" type="button" aria-label="编辑任务" onClick={props.onEdit}>编辑</button> : null}
+            <button className="round-button" type="button" aria-label="关闭详情" onClick={props.onClose}><X size={20} /></button>
+          </div>
         </header>
         <div className="sheet-body detail-body">
+          <section className="progress-summary" aria-label="最新进展">
+            <div className="progress-title"><h3>最新进展</h3>{props.onAddProgress && !props.task.deletedAt ? <button className="text-button" type="button" onClick={() => setRecording(value => !value)}>记录进展</button> : null}</div>
+            <p>{progress?.message ?? '还没有进展记录，可随时补充处理过程。'}</p>
+            {progress ? <time>{formatTaskDate(progress.createdAt)}</time> : null}
+            {recording ? <form onSubmit={event => { event.preventDefault(); void recordProgress(); }}>
+              <label className="editor-field" htmlFor="task-progress"><span>进展内容</span><textarea id="task-progress" maxLength={2000} value={progressText} onChange={event => setProgressText(event.target.value)} placeholder="如：已联系供应商，预计周五返回整改报告" /></label>
+              <button className="primary-button" type="submit" disabled={busy || !progressText.trim()}>{busy ? '保存中…' : '保存进展'}</button>
+            </form> : null}
+            {error ? <p className="inline-error" role="alert">{error}</p> : null}
+          </section>
           {props.task.description ? <p className="task-description">{props.task.description}</p> : null}
           {props.task.reference ? <DetailRow label="关联编号" value={props.task.reference} /> : null}
           {props.task.tags.length ? <DetailRow label="标签" value={props.task.tags.map(({ name }) => name).join(' · ')} /> : null}

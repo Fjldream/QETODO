@@ -71,7 +71,7 @@ export class SyncEngine {
         if (acknowledgement.operationId !== operation.operationId) {
           throw new Error('Server acknowledged an unexpected operation');
         }
-        await this.options.tasks.replaceFromAcknowledgement(operation.taskId, acknowledgement.data);
+        await this.options.tasks.replaceFromAcknowledgement(operation.taskId, acknowledgement.data, operation.operationId);
         await this.options.onAcknowledged?.(operation, acknowledgement);
         await this.options.outbox.ack(operation.operationId);
       } catch (error) {

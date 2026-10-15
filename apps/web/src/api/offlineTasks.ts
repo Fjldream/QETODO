@@ -7,6 +7,7 @@ import {
   type TaskTransitionInput,
   type UpdateTaskInput,
 } from '@qetodo/contracts';
+import { liveQuery } from 'dexie';
 
 import { localDb, type LocalDatabase } from '../db/localDb.js';
 import { LocalTaskStore } from '../db/taskStore.js';
@@ -14,6 +15,7 @@ import { publishConflict, publishSyncStatus } from '../sync/SyncStatus.js';
 import { resolveConflict } from '../sync/conflictResolver.js';
 import { OutboxRepository, type OutboxOperation } from '../sync/outbox.js';
 import { SyncEngine } from '../sync/syncEngine.js';
+import { applyQueuedOperation, applyTaskPatch } from '../sync/taskProjection.js';
 import type { HttpClient } from './http.js';
 import { createTasksApi, type TaskDraft } from './tasks.js';
 
@@ -24,6 +26,10 @@ interface QueuedCreate {
   tags: string[];
   tagsOperationId: string;
   attachments: Array<{ operationId: string; name: string; mediaType: string; bytes: ArrayBuffer }>;
+}
+interface QueuedEdit {
+  patch: UpdateTaskInput;
+  attachments: QueuedCreate['attachments'];
 }
 
 export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = localDb) {
@@ -38,8 +44,8 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
     send,
     onStatus: publishSyncStatus,
     onAcknowledged: async (operation, acknowledgement) => {
-      if (operation.kind !== 'create') return;
-      const queued = operation.data as QueuedCreate;
+      if (operation.kind !== 'create' && operation.kind !== 'edit') return;
+      const queued = operation.data as QueuedCreate | QueuedEdit;
       for (const attachment of queued.attachments) {
         await outbox.enqueue({
           operationId: attachment.operationId,
@@ -72,6 +78,11 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
   return {
     start(): void { engine.start(); },
     stop(): void { engine.stop(); },
+    get(id: string): Promise<TaskDto | undefined> { return tasks.get(id); },
+    subscribe(listener: (items: TaskDto[]) => void): () => void {
+      const subscription = liveQuery(() => tasks.list()).subscribe(listener);
+      return () => subscription.unsubscribe();
+    },
     seed(initialTasks: TaskDto[]): Promise<void> {
       seedPromise = seedPromise.then(() => tasks.putMany(initialTasks));
       return seedPromise;
@@ -80,7 +91,9 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
       try {
         const remote = await online.list(query);
         await tasks.putMany(remote);
-        return remote;
+        const pendingIds = new Set((await outbox.peek()).map(item => item.taskId));
+        const local = await tasks.list();
+        return [...remote.map(item => local.find(task => task.id === item.id) ?? item), ...local.filter(item => pendingIds.has(item.id) && !remote.some(task => task.id === item.id))];
       } catch {
         const local = await tasks.list();
         const text = query.text?.toLocaleLowerCase();
@@ -106,30 +119,51 @@ export function createOfflineTasksApi(client: HttpClient, db: LocalDatabase = lo
         attachments,
       } satisfies QueuedCreate));
     },
-    async update(id: string, version: number, patch: UpdateTaskInput): Promise<TaskDto> {
+    async update(id: string, _version: number, patch: UpdateTaskInput): Promise<TaskDto> {
       await seedPromise;
       const existing = await requireTask(tasks, id);
-      const updated = { ...existing, ...patch, version: version + 1, updatedAt: new Date().toISOString() } as TaskDto;
-      return queue(updated, operation(id, 'update', version, patch));
+      const updated = applyTaskPatch(existing, patch, new Date().toISOString());
+      return queue(updated, operation(existing.id, 'update', existing.version, patch));
     },
-    async transition(id: string, version: number, transition: TaskTransitionInput): Promise<TaskDto> {
+    async edit(id: string, _version: number, draft: TaskDraft): Promise<TaskDto> {
+      await seedPromise;
+      const existing = await requireTask(tasks, id);
+      const patch: UpdateTaskInput = {
+        title: draft.title, description: draft.description, status: draft.status,
+        priority: draft.priority, dueAt: draft.dueAt, reminderTimes: draft.reminderTimes,
+        waitingOn: draft.waitingOn, followUpAt: draft.followUpAt, reference: draft.reference,
+        recurrence: draft.recurrence, tagNames: draft.tags,
+        ...(draft.confirmOpenSubtasks ? { confirmOpenSubtasks: true } : {}),
+      };
+      const attachments = await Promise.all(draft.imageFiles.map(async file => ({ operationId: crypto.randomUUID(), name: file.name, mediaType: file.type, bytes: await file.arrayBuffer() })));
+      return queue(applyTaskPatch(existing, patch, new Date().toISOString()), operation(existing.id, 'edit', existing.version, { patch, attachments } satisfies QueuedEdit));
+    },
+    async addProgress(id: string, _version: number, message: string): Promise<TaskDto> {
+      await seedPromise;
+      const normalized = message.trim();
+      if (!normalized || normalized.length > 2_000) throw new Error('进展内容需为 1～2000 字');
+      const existing = await requireTask(tasks, id);
+      const queued = operation(existing.id, 'activity', existing.version, { message: normalized });
+      return queue(applyQueuedOperation(existing, queued), queued);
+    },
+    async transition(id: string, _version: number, transition: TaskTransitionInput): Promise<TaskDto> {
       await seedPromise;
       const existing = await requireTask(tasks, id);
       const updated = applyTransition(existing, transition);
-      return queue(updated, operation(id, 'transition', version, transition));
+      return queue(updated, operation(existing.id, 'transition', existing.version, transition));
     },
     async remove(id: string, version: number): Promise<TaskDto> {
       await seedPromise;
       const existing = await requireTask(tasks, id);
       const now = new Date().toISOString();
       const updated = { ...existing, deletedAt: now, updatedAt: now, version: version + 1 };
-      return queue(updated, operation(id, 'delete', version, {}));
+      return queue(updated, operation(existing.id, 'delete', existing.version, {}));
     },
     async restore(id: string, version: number): Promise<TaskDto> {
       await seedPromise;
       const existing = await requireTask(tasks, id);
       const updated = { ...existing, deletedAt: null, updatedAt: new Date().toISOString(), version: version + 1 };
-      return queue(updated, operation(id, 'restore', version, {}));
+      return queue(updated, operation(existing.id, 'restore', existing.version, {}));
     },
   };
 }
@@ -140,6 +174,7 @@ async function sendOperation(client: HttpClient, operation: OutboxOperation): Pr
     transition: [`/api/tasks/${operation.taskId}/transitions`, 'POST'],
     delete: [`/api/tasks/${operation.taskId}`, 'DELETE'],
     restore: [`/api/tasks/${operation.taskId}/restore`, 'POST'],
+    activity: [`/api/tasks/${operation.taskId}/activities`, 'POST'],
   } as const;
   if (operation.kind === 'create') {
     const queued = operation.data as QueuedCreate;
@@ -169,6 +204,12 @@ async function sendOperation(client: HttpClient, operation: OutboxOperation): Pr
       operationId: operation.operationId,
       data: taskDtoSchema.parse(await client.request(`/api/tasks/${operation.taskId}`)),
     };
+  }
+  if (operation.kind === 'edit') {
+    const queued = operation.data as QueuedEdit;
+    return taskAckSchema.parse(await client.request(`/api/tasks/${operation.taskId}`, {
+      method: 'PATCH', body: { operationId: operation.operationId, baseVersion: operation.baseVersion, data: queued.patch },
+    }));
   }
   const [path, method] = routes[operation.kind];
   return taskAckSchema.parse(await client.request(path, {

@@ -330,14 +330,35 @@ export class TaskService {
       const parsedPatch = updateTaskInputSchema.parse(patch);
       const current = this.required(id);
       this.assertVersion(current, baseVersion, parsedPatch);
+      const statusChanged = parsedPatch.status !== undefined && parsedPatch.status !== current.status;
+      if (statusChanged && parsedPatch.status === 'completed' && !parsedPatch.confirmOpenSubtasks && this.tasks.hasOpenSubtasks(id)) {
+        throw new OpenSubtasksConfirmationRequiredError(current);
+      }
+      const timestamp = this.clock.now().toISOString();
       const next = taskDtoSchema.parse({
         ...current,
         ...parsedPatch,
-        updatedAt: this.clock.now().toISOString(),
+        ...(statusChanged ? {
+          completedAt: parsedPatch.status === 'completed' ? timestamp : null,
+          cancelledAt: parsedPatch.status === 'cancelled' ? timestamp : null,
+        } : {}),
+        updatedAt: timestamp,
         version: current.version + 1,
       });
       this.tasks.save(next);
+      if (parsedPatch.tagNames !== undefined) {
+        const seen = new Set<string>();
+        const names = parsedPatch.tagNames.map(name => name.trim()).filter(name => {
+          const key = name.toLocaleLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        this.tasks.replaceTags(id, names, this.clock.now().getTime());
+        this.activities.append(next.id, 'tags_changed', this.clock.now().getTime());
+      }
       this.activities.append(next.id, activityKind, this.clock.now().getTime());
+      if (statusChanged) this.activities.append(next.id, 'status_changed', this.clock.now().getTime(), { from: current.status, to: next.status });
       const result = this.get(next.id);
       this.idempotency.record(operationId, this.userId, 'task.update', 200, result, Date.now());
       return result;

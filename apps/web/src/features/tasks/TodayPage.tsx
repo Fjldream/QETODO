@@ -1,14 +1,11 @@
 import type { TaskDto } from '@qetodo/contracts';
 import { Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
 
 import type { HttpClient } from '../../api/http.js';
-import { createOfflineTasksApi } from '../../api/offlineTasks.js';
-import type { TaskDraft } from '../../api/tasks.js';
-import { TaskDetailSheet } from './components/TaskDetailSheet.js';
-import { TaskEditorSheet } from './components/TaskEditorSheet.js';
+import { TaskDialogs } from './components/TaskDialogs.js';
 import { TaskSection } from './components/TaskSection.js';
 import { groupTasksForToday } from './taskViewModel.js';
+import { useTaskWorkspace } from './useTaskWorkspace.js';
 
 interface TodayPageProps {
   client: HttpClient;
@@ -17,76 +14,22 @@ interface TodayPageProps {
 }
 
 export function TodayPage({ client, initialTasks, now = new Date() }: TodayPageProps) {
-  const api = useMemo(() => createOfflineTasksApi(client), [client]);
-  const [tasks, setTasks] = useState<TaskDto[]>(initialTasks ?? []);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [selected, setSelected] = useState<TaskDto | null>(null);
-  const [syncMessage, setSyncMessage] = useState(initialTasks ? '已同步' : '正在同步…');
-
-  useEffect(() => {
-    api.start();
-    if (initialTasks) void api.seed(initialTasks);
-    return () => api.stop();
-  }, [api, initialTasks]);
-
-  useEffect(() => {
-    if (initialTasks) return;
-    let active = true;
-    void api.list().then((items) => {
-      if (!active) return;
-      setTasks(items);
-      setSyncMessage('已同步');
-    }).catch(() => active && setSyncMessage('暂时离线'));
-    return () => { active = false; };
-  }, [api, initialTasks]);
-
-  const groups = groupTasksForToday(tasks, now, 'Asia/Shanghai');
-  const replaceTask = (task: TaskDto) => {
-    setTasks((items) => [task, ...items.filter(({ id }) => id !== task.id)]);
-    setSelected((current) => current?.id === task.id ? task : current);
-  };
-  const save = async (draft: TaskDraft) => {
-    replaceTask(await api.create(draft));
-    setEditorOpen(false);
-  };
-  const postpone = async (task: TaskDto) => {
-    const basis = task.dueAt ? new Date(task.dueAt) : new Date(now);
-    basis.setDate(basis.getDate() + 1);
-    replaceTask(await api.update(task.id, task.version, { dueAt: basis.toISOString() }));
-  };
+  const workspace = useTaskWorkspace(client, initialTasks);
+  const groups = groupTasksForToday(workspace.tasks, now, 'Asia/Shanghai');
 
   return (
     <section className="page workflow-page">
       <header className="page-toolbar large-title-header">
-        <div><p className="eyebrow">{formatToday(now)}</p><h1>今日</h1><p className="sync-state">{syncMessage}</p></div>
-        <button className="add-button" type="button" aria-label="新建任务" onClick={() => setEditorOpen(true)}><Plus /></button>
+        <div><p className="eyebrow">{formatToday(now)}</p><h1>今日</h1><p className="sync-state">{workspace.syncMessage}</p></div>
+        <button className="add-button" type="button" aria-label="新建任务" onClick={workspace.openCreate}><Plus /></button>
       </header>
       {groups.length ? groups.map((group) => (
-        <TaskSection key={group.key} title={group.title} tasks={group.tasks} onSelect={setSelected} onPostpone={(task) => void postpone(task)} />
+        <TaskSection key={group.key} title={group.title} tasks={group.tasks} onSelect={workspace.openTask} onPostpone={task => void workspace.postpone(task)} />
       )) : (
         <div className="empty-state"><span className="empty-state-symbol">✓</span><h2>今天安排清楚了</h2><p>点右上角“添加”记录第一条任务。</p></div>
       )}
-      <TaskEditorSheet
-        open={editorOpen}
-        defaultDueAt={todayDefaultDueAt(now, 'Asia/Shanghai')}
-        onClose={() => setEditorOpen(false)}
-        onSave={save}
-      />
-      {selected ? (
-        <TaskDetailSheet
-          open
-          task={selected}
-          onClose={() => setSelected(null)}
-          onComplete={async (confirmOpenSubtasks) => replaceTask(await api.transition(selected.id, selected.version, { type: 'complete', confirmOpenSubtasks }))}
-          onDelete={async () => replaceTask(await api.remove(selected.id, selected.version))}
-          onUndo={async () => {
-            const restored = selected.deletedAt
-              ? await api.restore(selected.id, selected.version)
-              : await api.transition(selected.id, selected.version, { type: 'restore' });
-            replaceTask(restored);
-          }}
-        />
-      ) : null}
+      {workspace.error ? <p role="alert" className="inline-error">{workspace.error}</p> : null}
+      <TaskDialogs workspace={workspace} defaultDueAt={todayDefaultDueAt(now, 'Asia/Shanghai')} />
     </section>
   );
 }

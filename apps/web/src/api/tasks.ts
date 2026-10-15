@@ -14,6 +14,7 @@ const taskAckSchema = mutationAckSchema(taskDtoSchema);
 export interface TaskDraft extends CreateTaskInput {
   tags: string[];
   imageFiles: File[];
+  confirmOpenSubtasks?: boolean;
 }
 
 export function createTasksApi(client: HttpClient) {
