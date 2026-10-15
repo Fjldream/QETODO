@@ -55,9 +55,117 @@ export class TaskRepository {
 
   list(): TaskDto[] {
     const rows = this.database.sqlite
-      .prepare(`${taskSelect} WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC`)
+      .prepare(
+        `${taskSelect}
+         WHERE user_id = ? AND deleted_at IS NULL
+           AND status NOT IN ('completed', 'cancelled')
+         ORDER BY created_at DESC`,
+      )
       .all(this.userId) as TaskRow[];
     return rows.map((row) => mapTaskRow(row, this.loadRelations(row.id)));
+  }
+
+  listDeleted(): TaskDto[] {
+    const rows = this.database.sqlite
+      .prepare(`${taskSelect} WHERE user_id = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC`)
+      .all(this.userId) as TaskRow[];
+    return rows.map((row) => mapTaskRow(row, this.loadRelations(row.id)));
+  }
+
+  replaceTags(taskId: string, names: string[], createdAt: number): void {
+    this.database.sqlite.prepare('DELETE FROM task_tags WHERE task_id = ?').run(taskId);
+    const insertTag = this.database.sqlite.prepare(
+      `INSERT INTO tags (id, user_id, name, color, created_at)
+       VALUES (?, ?, ?, NULL, ?)
+       ON CONFLICT(user_id, name COLLATE NOCASE) DO NOTHING`,
+    );
+    const findTag = this.database.sqlite.prepare(
+      'SELECT id FROM tags WHERE user_id = ? AND name = ? COLLATE NOCASE',
+    );
+    const attach = this.database.sqlite.prepare(
+      'INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)',
+    );
+
+    for (const name of names) {
+      insertTag.run(randomUUID(), this.userId, name, createdAt);
+      const tag = findTag.get(this.userId, name) as { id: string };
+      attach.run(taskId, tag.id);
+    }
+
+    this.database.sqlite
+      .prepare(
+        `UPDATE tasks SET search_tags = COALESCE((
+           SELECT group_concat(tags.name, ' ')
+           FROM task_tags JOIN tags ON tags.id = task_tags.tag_id
+           WHERE task_tags.task_id = tasks.id
+         ), '') WHERE id = ? AND user_id = ?`,
+      )
+      .run(taskId, this.userId);
+  }
+
+  createSubtask(taskId: string, title: string, sortOrder: number, now: number): void {
+    this.database.sqlite
+      .prepare(
+        `INSERT INTO subtasks
+         (id, task_id, title, completed, sort_order, created_at, updated_at)
+         VALUES (?, ?, ?, 0, ?, ?, ?)`,
+      )
+      .run(randomUUID(), taskId, title, sortOrder, now, now);
+  }
+
+  updateSubtask(
+    taskId: string,
+    subtaskId: string,
+    patch: {
+      title?: string | undefined;
+      completed?: boolean | undefined;
+      sortOrder?: number | undefined;
+    },
+    now: number,
+  ): void {
+    const current = this.database.sqlite
+      .prepare(
+        `SELECT title, completed, sort_order AS sortOrder
+         FROM subtasks WHERE id = ? AND task_id = ?`,
+      )
+      .get(subtaskId, taskId) as
+      | { title: string; completed: number; sortOrder: number }
+      | undefined;
+    if (!current) throw new Error('SUBTASK_NOT_FOUND');
+    this.database.sqlite
+      .prepare(
+        `UPDATE subtasks SET title = ?, completed = ?, sort_order = ?, updated_at = ?
+         WHERE id = ? AND task_id = ?`,
+      )
+      .run(
+        patch.title ?? current.title,
+        patch.completed === undefined ? current.completed : Number(patch.completed),
+        patch.sortOrder ?? current.sortOrder,
+        now,
+        subtaskId,
+        taskId,
+      );
+  }
+
+  deleteSubtask(taskId: string, subtaskId: string): void {
+    this.database.sqlite
+      .prepare('DELETE FROM subtasks WHERE id = ? AND task_id = ?')
+      .run(subtaskId, taskId);
+  }
+
+  reorderSubtasks(taskId: string, orderedIds: string[], now: number): void {
+    const update = this.database.sqlite.prepare(
+      'UPDATE subtasks SET sort_order = ?, updated_at = ? WHERE id = ? AND task_id = ?',
+    );
+    orderedIds.forEach((id, index) => update.run(index, now, id, taskId));
+  }
+
+  hasOpenSubtasks(taskId: string): boolean {
+    return Boolean(
+      this.database.sqlite
+        .prepare('SELECT 1 FROM subtasks WHERE task_id = ? AND completed = 0 LIMIT 1')
+        .get(taskId),
+    );
   }
 
   private replaceReminders(task: TaskDto): void {
@@ -76,8 +184,12 @@ export class TaskRepository {
       .prepare('SELECT remind_at AS remindAt FROM reminders WHERE task_id = ? ORDER BY remind_at')
       .all(taskId) as Array<{ remindAt: number }>;
     const tagRows = this.database.sqlite
-      .prepare('SELECT tag_id AS tagId FROM task_tags WHERE task_id = ? ORDER BY tag_id')
-      .all(taskId) as Array<{ tagId: string }>;
+      .prepare(
+        `SELECT tags.id, tags.name, tags.color
+         FROM task_tags JOIN tags ON tags.id = task_tags.tag_id
+         WHERE task_tags.task_id = ? ORDER BY tags.name COLLATE NOCASE`,
+      )
+      .all(taskId) as Array<{ id: string; name: string; color: string | null }>;
     const subtasks = this.database.sqlite
       .prepare(
         `SELECT id, title, completed, sort_order AS sortOrder
@@ -91,10 +203,23 @@ export class TaskRepository {
          FROM attachments WHERE task_id = ? ORDER BY created_at`,
       )
       .all(taskId) as Array<Omit<TaskDto['attachments'][number], 'createdAt'> & { createdAt: number }>;
+    const activities = this.database.sqlite
+      .prepare(
+        `SELECT id, kind, message, metadata, created_at AS createdAt
+         FROM activities WHERE task_id = ? ORDER BY created_at DESC, rowid DESC`,
+      )
+      .all(taskId) as Array<{
+        id: string;
+        kind: string;
+        message: string | null;
+        metadata: string | null;
+        createdAt: number;
+      }>;
 
     return {
       reminderTimes: reminderRows.map(({ remindAt }) => remindAt),
-      tagIds: tagRows.map(({ tagId }) => tagId),
+      tagIds: tagRows.map(({ id }) => id),
+      tags: tagRows,
       subtasks: subtasks.map((subtask) => ({
         ...subtask,
         completed: Boolean(subtask.completed),
@@ -103,8 +228,20 @@ export class TaskRepository {
         ...attachment,
         createdAt: new Date(attachment.createdAt).toISOString(),
       })),
+      activities: activities.map((activity) => ({
+        id: activity.id,
+        kind: activity.kind,
+        message: activity.message,
+        metadata: parseMetadata(activity.metadata),
+        system: activity.kind !== 'manual',
+        createdAt: new Date(activity.createdAt).toISOString(),
+      })),
     };
   }
+}
+
+function parseMetadata(value: string | null): Record<string, unknown> | null {
+  return value === null ? null : (JSON.parse(value) as Record<string, unknown>);
 }
 
 const taskSelect = `SELECT

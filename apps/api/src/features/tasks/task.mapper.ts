@@ -1,4 +1,11 @@
-import { taskDtoSchema, type AttachmentDto, type SubtaskDto, type TaskDto } from '@qetodo/contracts';
+import {
+  taskDtoSchema,
+  type ActivityDto,
+  type AttachmentDto,
+  type SubtaskDto,
+  type TagDto,
+  type TaskDto,
+} from '@qetodo/contracts';
 
 export interface TaskRow {
   id: string;
@@ -25,7 +32,9 @@ export interface TaskRow {
 export interface TaskRelations {
   reminderTimes: number[];
   tagIds: string[];
+  tags: TagDto[];
   subtasks: SubtaskDto[];
+  activities: ActivityDto[];
   attachments: AttachmentDto[];
 }
 
@@ -47,7 +56,9 @@ export function mapTaskRow(row: TaskRow, relations: TaskRelations): TaskDto {
     followUpAt: toIso(row.followUpAt),
     reference: row.reference,
     tagIds: relations.tagIds,
+    tags: relations.tags,
     subtasks: relations.subtasks,
+    activities: relations.activities,
     recurrence,
     recurrenceSeriesId: row.recurrenceSeriesId,
     attachments: relations.attachments,

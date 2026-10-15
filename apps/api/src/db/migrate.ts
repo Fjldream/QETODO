@@ -7,6 +7,10 @@ const migrations = [
     id: 1,
     file: new URL('../../migrations/0001_initial.sql', import.meta.url),
   },
+  {
+    id: 2,
+    file: new URL('../../migrations/0002_task_search.sql', import.meta.url),
+  },
 ] as const;
 
 export function migrateDatabase(database: AppDatabase): void {

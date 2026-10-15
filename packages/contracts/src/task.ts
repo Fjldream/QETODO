@@ -26,6 +26,21 @@ export const subtaskDtoSchema = z.object({
   sortOrder: z.number().int().nonnegative(),
 });
 
+export const tagDtoSchema = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1).max(50),
+  color: z.string().max(30).nullable(),
+});
+
+export const activityDtoSchema = z.object({
+  id: z.uuid(),
+  kind: z.string().min(1).max(100),
+  message: z.string().max(2_000).nullable(),
+  metadata: z.record(z.string(), z.unknown()).nullable(),
+  system: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+});
+
 const waitingFields = {
   waitingOn: z.string().trim().min(1).max(200).nullable(),
   followUpAt: z.iso.datetime({ offset: true }).nullable(),
@@ -71,7 +86,9 @@ const taskDtoObjectSchema = z.object({
   ...waitingFields,
   reference: z.string().trim().max(200).nullable(),
   tagIds: z.array(z.uuid()),
+  tags: z.array(tagDtoSchema).default([]),
   subtasks: z.array(subtaskDtoSchema),
+  activities: z.array(activityDtoSchema).default([]),
   recurrence: recurrenceRuleSchema,
   recurrenceSeriesId: z.uuid().nullable().optional(),
   attachments: z.array(attachmentDtoSchema).max(6),
@@ -112,7 +129,11 @@ export const updateTaskInputSchema = createTaskInputObjectSchema
 
 export const taskTransitionInputSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('start') }),
-  z.object({ type: z.literal('complete'), completionNote: z.string().trim().max(2_000).optional() }),
+  z.object({
+    type: z.literal('complete'),
+    completionNote: z.string().trim().max(2_000).optional(),
+    confirmOpenSubtasks: z.boolean().default(false),
+  }),
   z.object({ type: z.literal('cancel') }),
   z.object({ type: z.literal('restore') }),
   z.object({
@@ -126,6 +147,8 @@ export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type TaskPriority = z.infer<typeof taskPrioritySchema>;
 export type RecurrenceRule = z.infer<typeof recurrenceRuleSchema>;
 export type SubtaskDto = z.infer<typeof subtaskDtoSchema>;
+export type TagDto = z.infer<typeof tagDtoSchema>;
+export type ActivityDto = z.infer<typeof activityDtoSchema>;
 export type TaskDto = z.infer<typeof taskDtoSchema>;
 export type CreateTaskInput = z.input<typeof createTaskInputSchema>;
 export type UpdateTaskInput = z.input<typeof updateTaskInputSchema>;

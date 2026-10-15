@@ -19,6 +19,12 @@ import { TaskRepository } from './task.repository.js';
 
 export class TaskNotFoundError extends Error {}
 
+export class OpenSubtasksConfirmationRequiredError extends Error {
+  constructor(readonly task: TaskDto) {
+    super('OPEN_SUBTASKS_CONFIRMATION_REQUIRED');
+  }
+}
+
 export class VersionConflictError extends Error {
   constructor(
     readonly local: TaskDto,
@@ -127,6 +133,13 @@ export class TaskService {
     return this.database.sqlite.transaction(() => {
       const current = this.required(id);
       this.assertVersion(current, baseVersion, patch);
+      if (
+        parsed.type === 'complete' &&
+        !parsed.confirmOpenSubtasks &&
+        this.tasks.hasOpenSubtasks(id)
+      ) {
+        throw new OpenSubtasksConfirmationRequiredError(current);
+      }
       const next = taskDtoSchema.parse({
         ...current,
         ...patch,
@@ -155,6 +168,157 @@ export class TaskService {
     return this.tasks.list();
   }
 
+  setTags(
+    id: string,
+    baseVersion: number,
+    names: string[],
+    operationId: string,
+  ): TaskDto {
+    const seen = new Set<string>();
+    const normalized = names
+      .map((name) => name.trim())
+      .filter((name) => {
+        const key = name.toLocaleLowerCase();
+        if (!name || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    if (normalized.some((name) => name.length > 50)) {
+      throw new Error('INVALID_TAG');
+    }
+    return this.changeDetails(
+      id,
+      baseVersion,
+      operationId,
+      'task.tags',
+      () => this.tasks.replaceTags(id, normalized, this.clock.now().getTime()),
+      'tags_changed',
+    );
+  }
+
+  createSubtask(
+    id: string,
+    baseVersion: number,
+    input: { title: string; sortOrder: number },
+    operationId: string,
+  ): TaskDto {
+    const title = input.title.trim();
+    if (!title || title.length > 200 || !Number.isInteger(input.sortOrder) || input.sortOrder < 0) {
+      throw new Error('INVALID_SUBTASK');
+    }
+    return this.changeDetails(
+      id,
+      baseVersion,
+      operationId,
+      'task.subtask.create',
+      () => this.tasks.createSubtask(id, title, input.sortOrder, this.clock.now().getTime()),
+      'subtask_changed',
+    );
+  }
+
+  updateSubtask(
+    taskId: string,
+    subtaskId: string,
+    baseVersion: number,
+    patch: {
+      title?: string | undefined;
+      completed?: boolean | undefined;
+      sortOrder?: number | undefined;
+    },
+    operationId: string,
+  ): TaskDto {
+    return this.changeDetails(
+      taskId,
+      baseVersion,
+      operationId,
+      'task.subtask.update',
+      () => this.tasks.updateSubtask(taskId, subtaskId, patch, this.clock.now().getTime()),
+      'subtask_changed',
+    );
+  }
+
+  deleteSubtask(
+    taskId: string,
+    subtaskId: string,
+    baseVersion: number,
+    operationId: string,
+  ): TaskDto {
+    return this.changeDetails(
+      taskId,
+      baseVersion,
+      operationId,
+      'task.subtask.delete',
+      () => this.tasks.deleteSubtask(taskId, subtaskId),
+      'subtask_changed',
+    );
+  }
+
+  reorderSubtasks(
+    taskId: string,
+    baseVersion: number,
+    orderedIds: string[],
+    operationId: string,
+  ): TaskDto {
+    return this.changeDetails(
+      taskId,
+      baseVersion,
+      operationId,
+      'task.subtask.reorder',
+      () => this.tasks.reorderSubtasks(taskId, orderedIds, this.clock.now().getTime()),
+      'subtask_changed',
+    );
+  }
+
+  addManualActivity(
+    id: string,
+    baseVersion: number,
+    message: string,
+    operationId: string,
+  ): TaskDto {
+    const normalized = message.trim();
+    if (!normalized || normalized.length > 2_000) throw new Error('INVALID_ACTIVITY');
+    return this.changeDetails(
+      id,
+      baseVersion,
+      operationId,
+      'task.activity.manual',
+      () =>
+        this.activities.append(
+          id,
+          'manual',
+          this.clock.now().getTime(),
+          undefined,
+          normalized,
+        ),
+      null,
+    );
+  }
+
+  softDelete(id: string, baseVersion: number, operationId: string): TaskDto {
+    return this.changeDetails(
+      id,
+      baseVersion,
+      operationId,
+      'task.delete',
+      () => undefined,
+      'deleted',
+      { deletedAt: this.clock.now().toISOString() },
+    );
+  }
+
+  restoreDeleted(id: string, baseVersion: number, operationId: string): TaskDto {
+    return this.changeDetails(
+      id,
+      baseVersion,
+      operationId,
+      'task.restore',
+      () => undefined,
+      'restored',
+      { deletedAt: null },
+    );
+  }
+
   private mutate(
     id: string,
     baseVersion: number,
@@ -176,6 +340,45 @@ export class TaskService {
       this.activities.append(next.id, activityKind, this.clock.now().getTime());
       const result = this.get(next.id);
       this.idempotency.record(operationId, this.userId, 'task.update', 200, result, Date.now());
+      return result;
+    })();
+  }
+
+  private changeDetails(
+    id: string,
+    baseVersion: number,
+    operationId: string,
+    operationType: string,
+    changeRelations: () => void,
+    activityKind: string | null,
+    patch: Partial<TaskDto> = {},
+  ): TaskDto {
+    const replayed = this.replay(operationId);
+    if (replayed) return replayed;
+
+    return this.database.sqlite.transaction(() => {
+      const current = this.required(id);
+      this.assertVersion(current, baseVersion, {});
+      changeRelations();
+      const next = taskDtoSchema.parse({
+        ...current,
+        ...patch,
+        updatedAt: this.clock.now().toISOString(),
+        version: current.version + 1,
+      });
+      this.tasks.save(next);
+      if (activityKind) {
+        this.activities.append(next.id, activityKind, this.clock.now().getTime());
+      }
+      const result = this.get(next.id);
+      this.idempotency.record(
+        operationId,
+        this.userId,
+        operationType,
+        200,
+        result,
+        this.clock.now().getTime(),
+      );
       return result;
     })();
   }

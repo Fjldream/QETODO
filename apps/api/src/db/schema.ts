@@ -60,6 +60,7 @@ export const tasks = sqliteTable(
     waitingOn: text('waiting_on'),
     followUpAt: integer('follow_up_at', { mode: 'timestamp_ms' }),
     reference: text('reference'),
+    searchTags: text('search_tags').notNull().default(''),
     recurrenceKind: text('recurrence_kind').notNull().default('none'),
     recurrenceInterval: integer('recurrence_interval').notNull().default(1),
     recurrenceSeriesId: text('recurrence_series_id'),

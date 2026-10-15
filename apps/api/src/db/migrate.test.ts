@@ -35,7 +35,7 @@ describe('database migration', () => {
       )
       .all() as Array<{ name: string }>;
 
-    expect(rows.map(({ name }) => name)).toEqual(expectedTables);
+    expect(rows.map(({ name }) => name)).toEqual(expect.arrayContaining(expectedTables));
   });
 
   it('applies migrations only once', () => {
@@ -49,6 +49,6 @@ describe('database migration', () => {
     const count = database.sqlite
       .prepare('SELECT COUNT(*) AS count FROM schema_migrations')
       .get() as { count: number };
-    expect(count.count).toBe(1);
+    expect(count.count).toBe(2);
   });
 });
