@@ -7,6 +7,7 @@ if [[ -z ${base_url} ]]; then
   exit 1
 fi
 base_url="${base_url%/}"
+origin="$(node -e 'process.stdout.write(new URL(process.argv[1]).origin)' "${base_url}")"
 cookie_jar="$(mktemp)"
 response_file="$(mktemp)"
 trap 'rm -f "${cookie_jar}" "${response_file}"' EXIT
@@ -46,7 +47,12 @@ csrf="$(node -e 'const fs=require("fs");process.stdout.write(JSON.parse(fs.readF
 operation_id="$(node -e 'console.log(crypto.randomUUID())')"
 title="部署检查-${operation_id}"
 payload="$(node -e 'console.log(JSON.stringify({operationId:process.argv[1],baseVersion:null,data:{title:process.argv[2]}}))' "${operation_id}" "${title}")"
-expect_status 201 --cookie "${cookie_jar}" --header "Origin: ${base_url}" --header "X-CSRF-Token: ${csrf}" --header 'Content-Type: application/json' --data "${payload}" "${base_url}/api/tasks"
+expect_status 201 --cookie "${cookie_jar}" --header "Origin: ${origin}" --header "X-CSRF-Token: ${csrf}" --header 'Content-Type: application/json' --data "${payload}" "${base_url}/api/tasks"
 node -e 'const fs=require("fs");const body=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(body.data.title!==process.argv[2])process.exit(1)' "${response_file}" "${title}"
 echo "✓ 认证与数据库写入正常"
+task_id="$(node -e 'const fs=require("fs");process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1],"utf8")).data.id)' "${response_file}")"
+task_version="$(node -e 'const fs=require("fs");process.stdout.write(String(JSON.parse(fs.readFileSync(process.argv[1],"utf8")).data.version))' "${response_file}")"
+cleanup_payload="$(node -e 'console.log(JSON.stringify({operationId:crypto.randomUUID(),baseVersion:Number(process.argv[1]),data:{}}))' "${task_version}")"
+expect_status 200 --request DELETE --cookie "${cookie_jar}" --header "Origin: ${origin}" --header "X-CSRF-Token: ${csrf}" --header 'Content-Type: application/json' --data "${cleanup_payload}" "${base_url}/api/tasks/${task_id}"
+echo "✓ 检查任务已移入回收站"
 echo "QETODO smoke test passed"
