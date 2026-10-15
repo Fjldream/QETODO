@@ -8,6 +8,7 @@ import { SessionService } from './features/auth/auth.service.js';
 import { ScryptPasswordHasher } from './features/auth/password.js';
 import { registerAttachmentRoutes } from './features/attachments/attachment.routes.js';
 import { registerNotificationRoutes } from './features/notifications/notification.routes.js';
+import { registerTransferRoutes } from './features/transfer/transfer.routes.js';
 import { registerTaskRoutes } from './features/tasks/task.routes.js';
 import { type Clock, systemClock } from './lib/clock.js';
 import { HttpError } from './lib/httpErrors.js';
@@ -20,6 +21,7 @@ export interface AppDependencies {
   loginRateLimit?: { maxFailures: number; windowMs: number };
   uploadDir?: string;
   vapidPublicKey?: string;
+  backupDir?: string;
 }
 
 export function buildApp(dependencies: AppDependencies): FastifyInstance {
@@ -71,6 +73,16 @@ export function buildApp(dependencies: AppDependencies): FastifyInstance {
       database: dependencies.database,
       sessions,
       vapidPublicKey: dependencies.vapidPublicKey ?? '',
+    }),
+  );
+  void app.register(async (scope) =>
+    registerTransferRoutes(scope, {
+      appOrigin: dependencies.appOrigin,
+      backupDir: dependencies.backupDir ?? 'data/backups',
+      clock,
+      database: dependencies.database,
+      sessions,
+      uploadDir: dependencies.uploadDir ?? 'data/uploads',
     }),
   );
 

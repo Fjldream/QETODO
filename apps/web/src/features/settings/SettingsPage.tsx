@@ -4,6 +4,7 @@ import type { HttpClient } from '../../api/http.js';
 import type { LocalTaskStore } from '../../app/App.js';
 import { AccountSettings } from './AccountSettings.js';
 import { NotificationSettings } from './NotificationSettings.js';
+import { DataTransfer } from './DataTransfer.js';
 
 interface SettingsPageProps {
   client: HttpClient;
@@ -27,6 +28,7 @@ export function SettingsPage(props: SettingsPageProps) {
         onSessionExpired={props.onSessionExpired}
       />
       <NotificationSettings client={props.client} />
+      <DataTransfer client={props.client} />
     </section>
   );
 }

@@ -14,6 +14,7 @@ const app = buildApp({
   appOrigin: config.APP_ORIGIN,
   uploadDir: config.UPLOAD_DIR,
   vapidPublicKey: config.VAPID_PUBLIC_KEY,
+  backupDir: config.BACKUP_DIR,
   sessionTtlMs: config.SESSION_TTL_DAYS * 24 * 60 * 60 * 1_000,
 });
 

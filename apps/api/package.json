@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "admin:set-password": "tsx scripts/set-admin-password.ts",
+    "backup": "tsx scripts/backup.ts",
+    "restore": "tsx scripts/restore.ts",
+    "backup:prune": "tsx scripts/prune-backups.ts",
     "build": "tsc -p tsconfig.json",
     "test": "pnpm --filter @qetodo/contracts build && vitest run",
     "start": "node dist/server.js",
