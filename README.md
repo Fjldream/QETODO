@@ -35,3 +35,5 @@ API 运行所需变量见 [`deploy/qetodo.env.example`](deploy/qetodo.env.exampl
 - `deploy`：Nginx、systemd、安装、更新和烟雾测试
 
 仓库不包含生产密码、VAPID 私钥、数据库、上传文件或备份。
+
+与 HaulHub 共用域名和服务器的配置见 [`docs/operations/shared-host.md`](docs/operations/shared-host.md)。

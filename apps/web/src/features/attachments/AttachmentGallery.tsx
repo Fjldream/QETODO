@@ -1,6 +1,8 @@
 import type { AttachmentDto } from '@qetodo/contracts';
 import { Trash2 } from 'lucide-react';
 
+import { scopedPath } from '../../app/paths.js';
+
 interface AttachmentGalleryProps {
   attachments: AttachmentDto[];
   onDelete?(attachment: AttachmentDto): void;
@@ -13,7 +15,7 @@ export function AttachmentGallery({ attachments, onDelete }: AttachmentGalleryPr
       {attachments.map((attachment) => (
         <figure key={attachment.id}>
           <img
-            src={`/api/tasks/${attachment.taskId}/attachments/${attachment.id}/content`}
+            src={scopedPath(`/api/tasks/${attachment.taskId}/attachments/${attachment.id}/content`)}
             alt={attachment.fileName}
             loading="lazy"
             width={attachment.width}

@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const base = process.env.VITE_BASE_PATH ?? '/';
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
@@ -7,7 +9,7 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 8_000 },
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: `http://127.0.0.1:4173${base}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -21,7 +23,7 @@ export default defineConfig({
     },
     {
       command: 'pnpm --filter @qetodo/web exec vite preview --host 127.0.0.1 --port 4173',
-      url: 'http://127.0.0.1:4173/manifest.webmanifest',
+      url: `http://127.0.0.1:4173${base}manifest.webmanifest`,
       reuseExistingServer: false,
       timeout: 30_000,
     },

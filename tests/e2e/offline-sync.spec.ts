@@ -11,7 +11,7 @@ test('keeps one optimistic task across offline reload and syncs it after reconne
   await expect(page.getByText('离线唯一任务', { exact: true })).toBeVisible();
   await context.setOffline(false);
   await expect.poll(async () => {
-    const response = await page.request.get('/api/tasks');
+    const response = await page.request.get('api/tasks');
     const tasks = await response.json() as Array<{ title: string }>;
     return tasks.filter(({ title }) => title === '离线唯一任务').length;
   }).toBe(1);

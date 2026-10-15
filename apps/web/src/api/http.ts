@@ -1,3 +1,5 @@
+import { scopedPath } from '../app/paths.js';
+
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
@@ -41,7 +43,7 @@ class BrowserHttpClient implements HttpClient {
       headers.set('X-CSRF-Token', this.csrfToken);
     }
 
-    const response = await fetch(path, {
+    const response = await fetch(scopedPath(path), {
       ...fetchOptions,
       method,
       headers,

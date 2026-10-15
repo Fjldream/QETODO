@@ -2,7 +2,16 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const base = process.env.VITE_BASE_PATH ?? '/';
+const apiProxy = {
+  [`${base}api`]: {
+    target: 'http://127.0.0.1:3000',
+    rewrite: (path: string) => path.slice(base.length - 1),
+  },
+};
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -29,14 +38,10 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: {
-      '/api': 'http://127.0.0.1:3000',
-    },
+    proxy: apiProxy,
   },
   preview: {
-    proxy: {
-      '/api': 'http://127.0.0.1:3000',
-    },
+    proxy: apiProxy,
   },
   test: {
     environment: 'jsdom',
