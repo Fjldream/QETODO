@@ -12,6 +12,7 @@ test('edits the original task from the task list, changes state and initial tags
   const title = `编辑验收-${Date.now()}`;
   await page.getByRole('button', { name: '新建任务' }).click();
   await page.getByLabel('任务标题').fill(title);
+  await page.getByRole('button', { name: '检验检测', exact: true }).click();
   await page.getByLabel('添加图片').setInputFiles('apps/web/public/icons/app-icon-512.png');
   await expect(page.getByText(/KB → .*KB/)).toBeVisible();
   await page.getByRole('button', { name: '保存任务' }).click();
@@ -35,7 +36,7 @@ test('edits the original task from the task list, changes state and initial tags
   await expect.poll(async () => (await stored(page)).find(task => task.id === original.id)?.status).toBe('waiting');
   const edited = (await stored(page)).find(task => task.id === original.id)!;
   expect(edited).toMatchObject({ title: `${title}-复核`, priority: 'urgent', reference: 'NCR-2026-008' });
-  expect(edited.tags.map(tag => tag.name).sort()).toEqual(['整改跟进', '质量异常']);
+  expect(edited.tags.map(tag => tag.name).sort()).toEqual(['整改跟进', '检验检测', '质量异常']);
   expect(edited.attachments).toHaveLength(1);
   expect(edited.activities.some(item => item.kind === 'status_changed')).toBe(true);
   await page.getByRole('button', { name: '编辑任务' }).click();

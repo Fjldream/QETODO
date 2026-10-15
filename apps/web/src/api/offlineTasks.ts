@@ -192,7 +192,7 @@ async function sendOperation(client: HttpClient, operation: OutboxOperation): Pr
         },
       }));
     }
-    return acknowledgement;
+    return { ...acknowledgement, operationId: operation.operationId };
   }
   if (operation.kind === 'attachment') {
     const queued = operation.data as { name: string; mediaType: string; bytes: ArrayBuffer };
