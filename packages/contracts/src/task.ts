@@ -121,7 +121,12 @@ const createTaskInputObjectSchema = z.object({
   completionNote: z.string().trim().max(2_000).optional(),
 });
 
-export const createTaskInputSchema = createTaskInputObjectSchema.superRefine(requireWaitingDetails);
+export const createTaskInputSchema = createTaskInputObjectSchema.superRefine((value, context) => {
+  requireWaitingDetails(value, context);
+  if (value.recurrence.kind !== 'none' && !value.dueAt) {
+    context.addIssue({ code: 'custom', message: '重复任务必须设置截止时间', path: ['dueAt'] });
+  }
+});
 
 export const updateTaskInputSchema = createTaskInputObjectSchema
   .partial()

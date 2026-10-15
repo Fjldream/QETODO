@@ -11,6 +11,9 @@ export const appConfigSchema = z.object({
   BACKUP_DIR: z.string().min(1),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
   ADMIN_USERNAME: z.string().trim().min(1).max(100).default('admin'),
+  VAPID_PUBLIC_KEY: z.string().default(''),
+  VAPID_PRIVATE_KEY: z.string().default(''),
+  VAPID_SUBJECT: z.string().default('mailto:admin@example.com'),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;

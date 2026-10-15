@@ -6,14 +6,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'prompt',
       injectRegister: null,
       manifest: false,
       includeAssets: ['icons/app-icon.svg', 'icons/app-icon-192.png', 'icons/app-icon-512.png', 'icons/apple-touch-icon.png'],
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,webmanifest}'],
-        navigateFallback: 'index.html',
-        runtimeCaching: [],
       },
     }),
   ],

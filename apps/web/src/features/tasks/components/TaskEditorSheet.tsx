@@ -1,10 +1,12 @@
-import type { TaskPriority, TaskStatus } from '@qetodo/contracts';
+import type { RecurrenceRule, TaskPriority, TaskStatus } from '@qetodo/contracts';
 import { Plus, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 
 import type { TaskDraft } from '../../../api/tasks.js';
 import { AttachmentPicker } from '../../attachments/AttachmentPicker.js';
 import type { CompressedImage } from '../../attachments/imageCompression.js';
+import { RecurrenceEditor } from './RecurrenceEditor.js';
+import { ReminderEditor } from './ReminderEditor.js';
 
 interface TaskEditorSheetProps {
   open: boolean;
@@ -26,6 +28,8 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [images, setImages] = useState<CompressedImage[]>([]);
+  const [reminderTimes, setReminderTimes] = useState<string[]>([]);
+  const [recurrence, setRecurrence] = useState<RecurrenceRule>({ kind: 'none' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -51,6 +55,7 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
     if (!title.trim()) nextErrors.title = '请填写任务标题';
     if (status === 'waiting' && !waitingOn.trim()) nextErrors.waitingOn = '请填写等待对象';
     if (status === 'waiting' && !followUpAt) nextErrors.followUpAt = '请选择下次跟进时间';
+    if (recurrence.kind !== 'none' && !dueAt) nextErrors.dueAt = '重复任务必须设置截止时间';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
@@ -60,13 +65,13 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
       status,
       priority,
       dueAt: dueAt ? new Date(dueAt).toISOString() : null,
-      reminderTimes: [],
+      reminderTimes,
       waitingOn: status === 'waiting' ? waitingOn.trim() : null,
       followUpAt: status === 'waiting' ? new Date(followUpAt).toISOString() : null,
       reference: null,
       tagIds: [],
       subtasks: [],
-      recurrence: { kind: 'none' },
+      recurrence,
       tags,
       imageFiles: images.map(({ file }) => file),
     });
@@ -126,6 +131,9 @@ export function TaskEditorSheet({ open, defaultDueAt, onClose, onSave }: TaskEdi
             <span>截止时间</span>
             <input id="task-due" type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} />
           </label>
+          {errors.dueAt ? <p className="inline-error">{errors.dueAt}</p> : null}
+          <ReminderEditor dueAt={dueAt} value={reminderTimes} onChange={setReminderTimes} />
+          <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
           {status === 'waiting' ? (
             <div className="conditional-fields">
               <label className="editor-field" htmlFor="waiting-on">

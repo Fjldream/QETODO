@@ -3,6 +3,7 @@ import type { SessionDto } from '@qetodo/contracts';
 import type { HttpClient } from '../../api/http.js';
 import type { LocalTaskStore } from '../../app/App.js';
 import { AccountSettings } from './AccountSettings.js';
+import { NotificationSettings } from './NotificationSettings.js';
 
 interface SettingsPageProps {
   client: HttpClient;
@@ -25,6 +26,7 @@ export function SettingsPage(props: SettingsPageProps) {
         onLoggedOut={props.onLoggedOut}
         onSessionExpired={props.onSessionExpired}
       />
+      <NotificationSettings client={props.client} />
     </section>
   );
 }

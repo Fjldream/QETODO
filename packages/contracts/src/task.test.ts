@@ -87,4 +87,15 @@ describe('task validation', () => {
 
     expect(result.success).toBe(true);
   });
+
+  it('rejects recurrence without a due time', () => {
+    const result = createTaskInputSchema.safeParse({
+      title: '每月计量校准',
+      recurrence: { kind: 'monthly', interval: 1 },
+      dueAt: null,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: ['dueAt'] })]));
+  });
 });

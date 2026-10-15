@@ -49,6 +49,6 @@ describe('database migration', () => {
     const count = database.sqlite
       .prepare('SELECT COUNT(*) AS count FROM schema_migrations')
       .get() as { count: number };
-    expect(count.count).toBe(2);
+    expect(count.count).toBe(3);
   });
 });

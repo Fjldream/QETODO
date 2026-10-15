@@ -191,6 +191,29 @@ export const pushSubscriptions = sqliteTable(
   (table) => [uniqueIndex('push_subscriptions_endpoint_unique').on(table.endpoint)],
 );
 
+export const notificationDeliveries = sqliteTable(
+  'notification_deliveries',
+  {
+    dedupeKey: text('dedupe_key').notNull(),
+    subscriptionId: text('subscription_id').notNull().references(() => pushSubscriptions.id, { onDelete: 'cascade' }),
+    status: text('status').notNull(),
+    attemptCount: integer('attempt_count').notNull().default(1),
+    lastError: text('last_error'),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.dedupeKey, table.subscriptionId] }),
+    check('notification_deliveries_status_check', sql`${table.status} IN ('sent', 'failed')`),
+  ],
+);
+
+export const notificationPreferences = sqliteTable('notification_preferences', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  digestTime: text('digest_time').notNull().default('09:00'),
+  defaultAdvanceMinutes: integer('default_advance_minutes').notNull().default(0),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
 export const idempotencyKeys = sqliteTable(
   'idempotency_keys',
   {
