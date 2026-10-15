@@ -1,0 +1,39 @@
+:root {
+  color-scheme: light dark;
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --surface-elevated: rgba(255, 255, 255, 0.82);
+  --text: #17171a;
+  --text-secondary: #6e6e73;
+  --separator: rgba(60, 60, 67, 0.18);
+  --action: #1677ff;
+  --danger: #d70015;
+  --warning: #c85d00;
+  --success: #248a3d;
+  --radius-large: 20px;
+  --radius-medium: 12px;
+  --content-width: 720px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-elevated: rgba(28, 28, 30, 0.82);
+    --text: #f5f5f7;
+    --text-secondary: #98989d;
+    --separator: rgba(84, 84, 88, 0.64);
+    --action: #409cff;
+    --danger: #ff453a;
+    --warning: #ff9f0a;
+    --success: #30d158;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --separator: currentColor;
+    --text-secondary: var(--text);
+  }
+}
